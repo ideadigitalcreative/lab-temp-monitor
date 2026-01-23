@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,31 @@ export function Header() {
       { href: '/admin/users', label: 'Users', icon: Users }
     );
   }
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  // Monitor fullscreen change (e.g. if user presses ESC)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
@@ -57,6 +83,21 @@ export function Header() {
               </Link>
             );
           })}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Keluar Layar Penuh' : 'Tampilkan Layar Penuh'}
+          >
+            {isFullscreen ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+            <span className="hidden lg:inline ml-2">{isFullscreen ? 'Normal' : 'Full Screen'}</span>
+          </Button>
 
           {isInstallable && (
             <Button
