@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -33,13 +33,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-
-interface Profile {
-    id: string;
-    email: string;
-    role: 'admin' | 'user';
-    created_at: string;
-}
+import { useUsers, useUpdateUserRole, useDeleteUser } from '@/hooks/useProfile';
 
 export default function UserManagement() {
     const [newUserEmail, setNewUserEmail] = useState('');
@@ -47,24 +41,9 @@ export default function UserManagement() {
     const [isCreating, setIsCreating] = useState(false);
     const queryClient = useQueryClient();
 
-    // Fetch profiles
-    const { data: profiles, isLoading } = useQuery({
-        queryKey: ['profiles'],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            return data as Profile[];
-        },
-    });
-
-    // Create User Mutation (Note: This is tricky on client side without admin API functions)
-    // Since we don't have a backend function to create users directly without logging in, 
-    // We'll trust the user to sign up via the auth page or implement a backend function later for proper invite flow.
-    // For now, let's focus on managing ROLES of existing users.
+    const { data: profiles, isLoading } = useUsers();
+    const updateRole = useUpdateUserRole();
+    const deleteUser = useDeleteUser();
 
     // Create User (Sign Up)
     const handleCreateUser = async () => {
@@ -85,32 +64,16 @@ export default function UserManagement() {
             setIsCreating(false);
             setNewUserEmail('');
             setNewUserPassword('');
-            // Note: This often logs the admin out if auto-confirm is on.
-            // If email confirm is on, it might not log out immediately but session state might change.
-
         } catch (error: any) {
             toast.error(error.message);
         }
     };
 
-    // Update Role Mutation
-    const updateRole = useMutation({
-        mutationFn: async ({ id, role }: { id: string; role: 'admin' | 'user' }) => {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role })
-                .eq('id', id);
-
-            if (error) throw error;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['profiles'] });
-            toast.success('User role updated successfully');
-        },
-        onError: (error) => {
-            toast.error(`Failed to update role: ${error.message}`);
-        },
-    });
+    const handleDeleteUser = (id: string, email: string) => {
+        if (confirm(`Are you sure you want to delete user ${email}?`)) {
+            deleteUser.mutate(id);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-background">
@@ -200,19 +163,30 @@ export default function UserManagement() {
                                             {format(new Date(profile.created_at), 'PPP')}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Select
-                                                defaultValue={profile.role}
-                                                onValueChange={(value) => updateRole.mutate({ id: profile.id, role: value as 'admin' | 'user' })}
-                                                disabled={updateRole.isPending}
-                                            >
-                                                <SelectTrigger className="w-[130px] ml-auto">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="user">User</SelectItem>
-                                                    <SelectItem value="admin">Admin</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <div className="flex justify-end gap-2">
+                                                <Select
+                                                    defaultValue={profile.role}
+                                                    onValueChange={(value) => updateRole.mutate({ id: profile.id, role: value as 'admin' | 'user' })}
+                                                    disabled={updateRole.isPending}
+                                                >
+                                                    <SelectTrigger className="w-[130px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="user">User</SelectItem>
+                                                        <SelectItem value="admin">Admin</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDeleteUser(profile.id, profile.email)}
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    disabled={deleteUser.isPending}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

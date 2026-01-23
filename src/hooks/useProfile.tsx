@@ -68,7 +68,12 @@ export function useUpdateUserRole() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['profiles'] });
+            import('sonner').then(({ toast }) => toast.success('User role updated successfully'));
         },
+        onError: (error: any) => {
+            import('sonner').then(({ toast }) => toast.error(`Failed to update role: ${error.message}`));
+        }
     });
 }
 
@@ -104,3 +109,25 @@ export function useUpdateUserRole() {
 //
 // BUT, I'll add `useDeleteUser` if needed, although usually deleting from `auth.users` requires admin API.
 // Deleting from `public.profiles` is possible via RLS.
+export function useDeleteUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['profiles'] });
+            import('sonner').then(({ toast }) => toast.success('User deleted successfully'));
+        },
+        onError: (error: any) => {
+            import('sonner').then(({ toast }) => toast.error(`Failed to delete user: ${error.message}`));
+        }
+    });
+}
