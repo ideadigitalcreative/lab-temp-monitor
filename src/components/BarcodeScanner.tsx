@@ -12,26 +12,43 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const startScanning = async () => {
     setError(null);
 
-    // Clear any existing scanner instance if needed
-    if (scannerRef.current?.isScanning) {
-      await stopScanning();
+    // Ensure the container is ready and any previous instances are cleared
+    if (scannerRef.current) {
+      if (scannerRef.current.isScanning) {
+        try {
+          await scannerRef.current.stop();
+        } catch (e) {
+          console.error("Error stopping previous scanner", e);
+        }
+      }
+      scannerRef.current = null;
     }
 
     try {
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode('barcode-reader');
-      }
+      // Small delay to ensure the DOM has updated if we just toggled state
+      setIsScanning(true);
 
-      await scannerRef.current.start(
+      // Wait for the next frame to ensure the div with id "barcode-reader" is rendered/resized
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const scanner = new Html5Qrcode('barcode-reader');
+      scannerRef.current = scanner;
+
+      await scanner.start(
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 }, // Use square aspect ratio often works better
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
+            return {
+              width: size,
+              height: size
+            };
+          },
           aspectRatio: 1.0,
         },
         (decodedText) => {
@@ -42,11 +59,10 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
           // QR code not detected, keep scanning
         }
       );
-
-      setIsScanning(true);
     } catch (err: any) {
       console.error("Scanner Error:", err);
       let errorMessage = 'Gagal mengakses kamera.';
+      setIsScanning(false);
 
       if (typeof err === 'string') {
         errorMessage = err;
@@ -55,9 +71,11 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
       } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
         errorMessage = 'Tidak ada kamera ditemukan di perangkat ini.';
       } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
-        errorMessage = 'Kamera sedang digunakan oleh aplikasi lain.';
+        errorMessage = 'Kamera sedang digunakan oleh aplikasi lain atau mengalami error hardware.';
       } else if (err?.message?.includes('Camera streaming not supported')) {
         errorMessage = 'Browser ini tidak mendukung streaming kamera. Coba gunakan browser lain (Chrome/Safari) atau update browser Anda.';
+      } else {
+        errorMessage = err?.message || 'Gagal memulai scanner.';
       }
 
       setError(errorMessage);
@@ -66,35 +84,62 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
   };
 
   const stopScanning = async () => {
-    if (scannerRef.current && isScanning) {
+    if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
         setIsScanning(false);
+        scannerRef.current = null;
       } catch (err) {
         console.error('Error stopping scanner:', err);
       }
+    } else {
+      setIsScanning(false);
     }
   };
 
   useEffect(() => {
     return () => {
-      if (scannerRef.current && isScanning) {
-        scannerRef.current.stop().catch(console.error);
+      if (scannerRef.current) {
+        if (scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(console.error);
+        }
+        scannerRef.current = null;
       }
     };
-  }, [isScanning]);
+  }, []);
 
   return (
     <div className="space-y-4">
+      <style>
+        {`
+          #barcode-reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            border-radius: 0.75rem;
+          }
+          #barcode-reader canvas {
+            display: none;
+          }
+          #barcode-reader__scan_region {
+            background: transparent !important;
+          }
+          #barcode-reader__dashboard {
+            display: none !important;
+          }
+        `}
+      </style>
+
       <div
-        ref={containerRef}
         id="barcode-reader"
-        className={`relative overflow-hidden rounded-xl bg-secondary/50 ${isScanning ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
+        className={`relative overflow-hidden rounded-xl bg-secondary/50 transition-all duration-300 ${isScanning ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
           }`}
       >
         {!isScanning && (
-          <div className="text-center p-8">
-            <Camera className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <div className="text-center p-8 animate-fade-in">
+            <Camera className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
             <p className="text-muted-foreground text-sm">
               Klik tombol di bawah untuk mulai memindai barcode
             </p>
@@ -103,7 +148,7 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-status-critical-bg text-status-critical text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-status-critical-bg text-status-critical text-sm animate-slide-up">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <p>{error}</p>
         </div>
@@ -112,7 +157,7 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
       <Button
         onClick={isScanning ? stopScanning : startScanning}
         variant={isScanning ? 'destructive' : 'default'}
-        className="w-full"
+        className="w-full shadow-button"
         size="lg"
       >
         {isScanning ? (
@@ -130,3 +175,4 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
     </div>
   );
 }
+

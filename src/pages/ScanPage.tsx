@@ -211,7 +211,7 @@ const ScanPage = () => {
               <div className="flex items-center gap-3 p-4 rounded-xl bg-status-critical-bg text-status-critical animate-slide-up">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium">Barcode Tidak Ditemukan</p>
+                  <p className="font-medium">Error Pemberitahuan</p>
                   <p className="text-sm opacity-80">{scanError}</p>
                 </div>
               </div>
