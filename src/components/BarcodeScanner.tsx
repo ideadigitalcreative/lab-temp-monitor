@@ -16,7 +16,12 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
 
   const startScanning = async () => {
     setError(null);
-    
+
+    // Clear any existing scanner instance if needed
+    if (scannerRef.current?.isScanning) {
+      await stopScanning();
+    }
+
     try {
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode('barcode-reader');
@@ -26,7 +31,8 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 250, height: 150 },
+          qrbox: { width: 250, height: 250 }, // Use square aspect ratio often works better
+          aspectRatio: 1.0,
         },
         (decodedText) => {
           onScan(decodedText);
@@ -36,10 +42,24 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
           // QR code not detected, keep scanning
         }
       );
-      
+
       setIsScanning(true);
     } catch (err: any) {
-      const errorMessage = err?.message || 'Gagal mengakses kamera';
+      console.error("Scanner Error:", err);
+      let errorMessage = 'Gagal mengakses kamera.';
+
+      if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+        errorMessage = 'Izin kamera ditolak. Mohon izinkan akses kamera di pengaturan browser Anda.';
+      } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+        errorMessage = 'Tidak ada kamera ditemukan di perangkat ini.';
+      } else if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+        errorMessage = 'Kamera sedang digunakan oleh aplikasi lain.';
+      } else if (err?.message?.includes('Camera streaming not supported')) {
+        errorMessage = 'Browser ini tidak mendukung streaming kamera. Coba gunakan browser lain (Chrome/Safari) atau update browser Anda.';
+      }
+
       setError(errorMessage);
       onError?.(errorMessage);
     }
@@ -69,9 +89,8 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
       <div
         ref={containerRef}
         id="barcode-reader"
-        className={`relative overflow-hidden rounded-xl bg-secondary/50 ${
-          isScanning ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
-        }`}
+        className={`relative overflow-hidden rounded-xl bg-secondary/50 ${isScanning ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
+          }`}
       >
         {!isScanning && (
           <div className="text-center p-8">

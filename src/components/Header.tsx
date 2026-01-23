@@ -1,14 +1,26 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useProfile } from '@/hooks/useProfile';
+import { usePWA } from '@/hooks/usePWA';
+import { Button } from '@/components/ui/button';
 
 export function Header() {
   const location = useLocation();
+  const { data: profile } = useProfile();
+  const { isInstallable, installApp } = usePWA();
 
   const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/scan', label: 'Input Data', icon: ScanBarcode },
   ];
+
+  if (profile?.role === 'admin') {
+    navLinks.push(
+      { href: '/admin/rooms', label: 'Rooms', icon: DoorOpen },
+      { href: '/admin/users', label: 'Users', icon: Users }
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
@@ -43,6 +55,18 @@ export function Header() {
               </Link>
             );
           })}
+
+          {isInstallable && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2 gap-2"
+              onClick={installApp}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Install</span>
+            </Button>
+          )}
         </nav>
       </div>
     </header>

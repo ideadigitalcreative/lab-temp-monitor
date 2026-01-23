@@ -8,9 +8,10 @@ interface StatCardProps {
   icon: ReactNode;
   trend?: 'up' | 'down' | 'neutral';
   className?: string;
+  iconClassName?: string;
 }
 
-export function StatCard({ title, value, subtitle, icon, className }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon, className, iconClassName }: StatCardProps) {
   return (
     <div className={cn('glass-card rounded-xl p-5 animate-slide-up', className)}>
       <div className="flex items-start justify-between">
@@ -21,7 +22,7 @@ export function StatCard({ title, value, subtitle, icon, className }: StatCardPr
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
-        <div className="p-3 rounded-lg bg-accent text-primary">
+        <div className={cn("p-3 rounded-lg", iconClassName || "bg-accent text-primary")}>
           {icon}
         </div>
       </div>

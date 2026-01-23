@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { TemperatureInputForm } from '@/components/TemperatureInputForm';
@@ -24,11 +24,25 @@ const ScanPage = () => {
   const [manualBarcode, setManualBarcode] = useState('');
   const [searchBarcode, setSearchBarcode] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
-  
+
+  const [searchParams] = useSearchParams();
+  const urlRoomId = searchParams.get('roomId');
+
   const { user, loading: authLoading, signOut } = useAuth();
   const { data: rooms } = useRooms();
   const { data: foundRoom, isLoading: searchingRoom } = useRoomByBarcode(searchBarcode);
   const addTemperatureLog = useAddTemperatureLog();
+
+  // Auto-select room from URL
+  useEffect(() => {
+    if (urlRoomId && rooms && !selectedRoom) {
+      const room = rooms.find((r) => r.id === urlRoomId);
+      if (room) {
+        setSelectedRoom(room);
+        toast.success(`Ruangan ${room.name} dipilih dari link!`);
+      }
+    }
+  }, [urlRoomId, rooms, selectedRoom]);
 
   // Handle barcode search result
   if (foundRoom && !selectedRoom) {

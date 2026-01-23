@@ -56,7 +56,7 @@ export function useRooms() {
         .from('rooms')
         .select('*')
         .order('name');
-      
+
       if (error) throw error;
       return data as Room[];
     },
@@ -69,13 +69,13 @@ export function useRoomByBarcode(barcode: string | null) {
     queryKey: ['room', 'barcode', barcode],
     queryFn: async () => {
       if (!barcode) return null;
-      
+
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
         .eq('barcode', barcode)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data as Room | null;
     },
@@ -98,7 +98,7 @@ export function useTemperatureLogs(roomId?: string, fromDate?: Date, toDate?: Da
           )
         `)
         .order('recorded_at', { ascending: true });
-      
+
       if (roomId) {
         query = query.eq('room_id', roomId);
       }
@@ -108,9 +108,9 @@ export function useTemperatureLogs(roomId?: string, fromDate?: Date, toDate?: Da
       if (toDate) {
         query = query.lte('recorded_at', toDate.toISOString());
       }
-      
+
       const { data, error } = await query.limit(500);
-      
+
       if (error) throw error;
       return data as TemperatureLog[];
     },
@@ -120,7 +120,7 @@ export function useTemperatureLogs(roomId?: string, fromDate?: Date, toDate?: Da
 // Fetch rooms with latest readings
 export function useRoomsWithLatestReadings() {
   const { data: rooms, isLoading: roomsLoading } = useRooms();
-  
+
   const { data: latestLogs, isLoading: logsLoading } = useQuery({
     queryKey: ['latest_temperature_logs'],
     queryFn: async () => {
@@ -134,7 +134,7 @@ export function useRoomsWithLatestReadings() {
           )
         `)
         .order('recorded_at', { ascending: false });
-      
+
       if (error) throw error;
       return data as TemperatureLog[];
     },
@@ -171,7 +171,7 @@ export function useRoomsWithLatestReadings() {
     const status = latestLog
       ? getTemperatureStatus(latestLog.temperature, room.name)
       : 'normal';
-    
+
     return {
       ...room,
       latestReading: latestLog,
@@ -188,7 +188,7 @@ export function useRoomsWithLatestReadings() {
 // Add temperature log mutation
 export function useAddTemperatureLog() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({
       roomId,
@@ -199,22 +199,86 @@ export function useAddTemperatureLog() {
       temperature: number;
       humidity: number;
     }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('temperature_logs')
         .insert({
           room_id: roomId,
           temperature,
           humidity,
+          recorded_by: user.id
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['temperature_logs'] });
       queryClient.invalidateQueries({ queryKey: ['latest_temperature_logs'] });
+    },
+  });
+}
+
+// Room Management Mutations
+export function useCreateRoom() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (room: Omit<Room, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('rooms')
+        .insert(room)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    },
+  });
+}
+
+export function useUpdateRoom() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Room> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('rooms')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    },
+  });
+}
+
+export function useDeleteRoom() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('rooms')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
     },
   });
 }

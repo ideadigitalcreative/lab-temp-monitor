@@ -8,6 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import ScanPage from "./pages/ScanPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import RoomManagement from "./pages/admin/RoomManagement";
+import UserManagement from "./pages/admin/UserManagement";
+import { AdminRoute } from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +25,18 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/scan" element={<ScanPage />} />
             <Route path="/auth" element={<Auth />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin/rooms" element={
+              <AdminRoute>
+                <RoomManagement />
+              </AdminRoute>
+            } />
+            <Route path="/admin/users" element={
+              <AdminRoute>
+                <UserManagement />
+              </AdminRoute>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
