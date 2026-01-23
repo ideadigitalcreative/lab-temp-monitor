@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { TemperatureInputForm } from '@/components/TemperatureInputForm';
-import { findRoomByBarcode, addTemperatureLog, mockRooms } from '@/data/mockData';
-import { Room } from '@/types';
-import { AlertCircle, ScanBarcode, Keyboard } from 'lucide-react';
+import { useRooms, useRoomByBarcode, useAddTemperatureLog, Room } from '@/hooks/useRooms';
+import { useAuth } from '@/hooks/useAuth';
+import { AlertCircle, ScanBarcode, Keyboard, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -15,24 +16,34 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const ScanPage = () => {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [searchBarcode, setSearchBarcode] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
+  
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { data: rooms } = useRooms();
+  const { data: foundRoom, isLoading: searchingRoom } = useRoomByBarcode(searchBarcode);
+  const addTemperatureLog = useAddTemperatureLog();
+
+  // Handle barcode search result
+  if (foundRoom && !selectedRoom) {
+    setSelectedRoom(foundRoom);
+    setSearchBarcode(null);
+    toast.success(`Ruangan ${foundRoom.name} ditemukan!`);
+  } else if (searchBarcode && !searchingRoom && !foundRoom && !selectedRoom) {
+    setScanError(`Barcode "${searchBarcode}" tidak ditemukan dalam sistem.`);
+    setSearchBarcode(null);
+    toast.error('Barcode tidak dikenali');
+  }
 
   const handleBarcodeScan = (barcode: string) => {
     setScanError(null);
-    const room = findRoomByBarcode(barcode);
-
-    if (room) {
-      setSelectedRoom(room);
-      toast.success(`Ruangan ${room.name} ditemukan!`);
-    } else {
-      setScanError(`Barcode "${barcode}" tidak ditemukan dalam sistem.`);
-      toast.error('Barcode tidak dikenali');
-    }
+    setSearchBarcode(barcode);
   };
 
   const handleManualBarcodeSubmit = () => {
@@ -43,30 +54,74 @@ const ScanPage = () => {
   };
 
   const handleManualRoomSelect = (roomId: string) => {
-    const room = mockRooms.find((r) => r.id === roomId);
+    const room = rooms?.find((r) => r.id === roomId);
     if (room) {
       setSelectedRoom(room);
       toast.success(`Ruangan ${room.name} dipilih!`);
     }
   };
 
-  const handleSubmitTemperature = (data: { temperature: number; humidity: number }) => {
+  const handleSubmitTemperature = async (data: { temperature: number; humidity: number }) => {
     if (selectedRoom) {
-      addTemperatureLog(selectedRoom.id, data.temperature, data.humidity);
-      toast.success('Data berhasil disimpan!');
+      try {
+        await addTemperatureLog.mutateAsync({
+          roomId: selectedRoom.id,
+          temperature: data.temperature,
+          humidity: data.humidity,
+        });
+        toast.success('Data berhasil disimpan!');
+      } catch (error: any) {
+        toast.error(error.message || 'Gagal menyimpan data');
+      }
     }
   };
 
   const handleReset = () => {
     setSelectedRoom(null);
     setScanError(null);
+    setSearchBarcode(null);
   };
+
+  // Show login prompt if not authenticated
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container py-6 max-w-lg mx-auto">
+          <div className="glass-card rounded-xl p-8 text-center animate-slide-up">
+            <LogIn className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Login Diperlukan</h2>
+            <p className="text-muted-foreground mb-6">
+              Anda harus login terlebih dahulu untuk mencatat data suhu ruangan.
+            </p>
+            <Link to="/auth">
+              <Button size="lg" className="w-full">
+                Masuk ke Akun
+              </Button>
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <main className="container py-6 max-w-lg mx-auto">
+        {/* User Info */}
+        {user && (
+          <div className="flex items-center justify-between mb-4 p-3 bg-secondary/50 rounded-lg">
+            <span className="text-sm text-muted-foreground">
+              Login sebagai: <span className="font-medium text-foreground">{user.email}</span>
+            </span>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              Logout
+            </Button>
+          </div>
+        )}
+
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground mb-2">Input Data Suhu</h1>
           <p className="text-muted-foreground text-sm">
@@ -123,7 +178,9 @@ const ScanPage = () => {
                       onKeyDown={(e) => e.key === 'Enter' && handleManualBarcodeSubmit()}
                       className="font-mono"
                     />
-                    <Button onClick={handleManualBarcodeSubmit}>Cari</Button>
+                    <Button onClick={handleManualBarcodeSubmit} disabled={searchingRoom}>
+                      {searchingRoom ? 'Mencari...' : 'Cari'}
+                    </Button>
                   </div>
                 </div>
               </>
@@ -138,7 +195,7 @@ const ScanPage = () => {
                     <SelectValue placeholder="Pilih ruangan laboratorium..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockRooms.map((room) => (
+                    {rooms?.map((room) => (
                       <SelectItem key={room.id} value={room.id}>
                         <div className="flex flex-col">
                           <span>{room.name}</span>
@@ -168,7 +225,7 @@ const ScanPage = () => {
             <div className="bg-secondary/50 rounded-xl p-4">
               <h4 className="font-medium text-sm mb-3">Kode Barcode Tersedia:</h4>
               <div className="flex flex-wrap gap-2">
-                {mockRooms.map((room) => (
+                {rooms?.map((room) => (
                   <button
                     key={room.id}
                     onClick={() => handleBarcodeScan(room.barcode)}
@@ -185,6 +242,7 @@ const ScanPage = () => {
             room={selectedRoom}
             onSubmit={handleSubmitTemperature}
             onReset={handleReset}
+            isSubmitting={addTemperatureLog.isPending}
           />
         )}
       </main>
