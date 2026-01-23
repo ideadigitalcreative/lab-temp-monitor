@@ -239,61 +239,107 @@ export default function RoomManagement() {
                 </DialogContent>
             </Dialog >
             {/* QR Code Dialog */}
-            < Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen} >
+            <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>QR Code for {selectedRoomForQR?.name}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex flex-col items-center justify-center p-6 space-y-4" id="print-area">
-                        <div className="bg-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex flex-col items-center justify-center p-6 space-y-4" id="qr-download-area">
+                        <div className="bg-white p-6 rounded-2xl border-4 border-primary/10 shadow-sm flex flex-col items-center">
                             {selectedRoomForQR && (
-                                <QRCode
-                                    value={`${window.location.origin}/scan?roomId=${selectedRoomForQR.id}`}
-                                    size={200}
-                                />
+                                <div id={`qr-svg-${selectedRoomForQR.id}`}>
+                                    <QRCode
+                                        value={`${window.location.origin}/scan?roomId=${selectedRoomForQR.id}`}
+                                        size={220}
+                                        level="H"
+                                    />
+                                </div>
                             )}
-                        </div>
-                        <div className="text-center space-y-1">
-                            <p className="font-bold text-lg">{selectedRoomForQR?.name}</p>
-                            <p className="text-sm text-muted-foreground">{selectedRoomForQR?.location}</p>
-                            <div className="flex items-center justify-center gap-2 mt-2">
-                                <code className="text-xs text-muted-foreground font-mono bg-secondary/50 px-2 py-1 rounded">
-                                    {`${window.location.origin}/scan?roomId=${selectedRoomForQR?.id}`}
-                                </code>
+                            <div className="mt-4 text-center">
+                                <p className="font-bold text-xl text-primary">{selectedRoomForQR?.name}</p>
                             </div>
                         </div>
                     </div>
-                    <DialogFooter className="sm:justify-between">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                const printContent = document.getElementById('print-area');
-                                if (printContent) {
-                                    const win = window.open('', '', 'height=700,width=700');
-                                    if (win) {
-                                        win.document.write('<html><head><title>Print QR Code</title>');
-                                        win.document.write('<style>body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; } .qr-container { padding: 20px; border: 2px solid #000; border-radius: 10px; text-align: center; } svg { margin-bottom: 20px; }</style>');
-                                        win.document.write('</head><body>');
-                                        win.document.write('<div class="qr-container">');
-                                        win.document.write(printContent.innerHTML);
-                                        win.document.write('</div>');
-                                        win.document.write('</body></html>');
-                                        win.document.close();
-                                        setTimeout(() => {
-                                            win.print();
-                                        }, 500);
+                    <DialogFooter className="sm:justify-between gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <Button
+                                variant="outline"
+                                className="flex-1 sm:flex-none"
+                                onClick={() => {
+                                    const printContent = document.getElementById('qr-download-area');
+                                    if (printContent) {
+                                        const win = window.open('', '', 'height=700,width=700');
+                                        if (win) {
+                                            win.document.write('<html><head><title>Print QR Code</title>');
+                                            win.document.write('<style>body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; } .qr-container { padding: 40px; border: 4px solid #000; border-radius: 20px; text-align: center; background: white; } svg { margin-bottom: 20px; }</style>');
+                                            win.document.write('</head><body>');
+                                            win.document.write('<div class="qr-container">');
+                                            win.document.write(printContent.innerHTML);
+                                            win.document.write('</div>');
+                                            win.document.write('</body></html>');
+                                            win.document.close();
+                                            setTimeout(() => {
+                                                win.print();
+                                            }, 500);
+                                        }
                                     }
-                                }
-                            }}
-                        >
-                            Print QR
-                        </Button>
+                                }}
+                            >
+                                Print QR
+                            </Button>
+                            <Button
+                                variant="default"
+                                className="flex-1 sm:flex-none"
+                                onClick={() => {
+                                    if (!selectedRoomForQR) return;
+                                    const svg = document.querySelector(`#qr-svg-${selectedRoomForQR.id} svg`);
+                                    if (svg) {
+                                        const svgData = new XMLSerializer().serializeToString(svg);
+                                        const canvas = document.createElement("canvas");
+                                        const ctx = canvas.getContext("2d");
+                                        const img = new Image();
+
+                                        // Higher resolution for download
+                                        const size = 1000;
+                                        canvas.width = size;
+                                        canvas.height = size + 150; // Extra space for text
+
+                                        img.onload = () => {
+                                            if (ctx) {
+                                                // Background
+                                                ctx.fillStyle = "white";
+                                                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                                                // Draw QR
+                                                ctx.drawImage(img, 100, 50, 800, 800);
+
+                                                // Add Text
+                                                ctx.fillStyle = "black";
+                                                ctx.font = "bold 60px Arial";
+                                                ctx.textAlign = "center";
+                                                ctx.fillText(selectedRoomForQR.name, size / 2, size - 20);
+
+                                                // Download
+                                                const pngFile = canvas.toDataURL("image/png");
+                                                const downloadLink = document.createElement("a");
+                                                downloadLink.download = `QR_${selectedRoomForQR.name.replace(/\s+/g, '_')}.png`;
+                                                downloadLink.href = `${pngFile}`;
+                                                downloadLink.click();
+                                            }
+                                        };
+                                        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+                                    }
+                                }}
+                            >
+                                Download PNG
+                            </Button>
+                        </div>
                         <DialogClose asChild>
-                            <Button type="button" variant="ghost">Close</Button>
+                            <Button type="button" variant="ghost">Tutup</Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog >
+            </Dialog>
 
             {/* Temperature Logs Management Dialog */}
             < TemperatureLogsDialog
