@@ -57,6 +57,27 @@ const ScanPage = () => {
 
   const handleBarcodeScan = (barcode: string) => {
     setScanError(null);
+
+    // Check if the scanned barcode is a URL from our system
+    if (barcode.includes('roomId=')) {
+      try {
+        const url = new URL(barcode);
+        const roomId = url.searchParams.get('roomId');
+        if (roomId) {
+          // If we found a roomId in the URL, try to find the room by ID directly
+          const room = rooms?.find(r => r.id === roomId);
+          if (room) {
+            setSelectedRoom(room);
+            toast.success(`Ruangan ${room.name} ditemukan dari QR Link!`);
+            return;
+          }
+        }
+      } catch (e) {
+        // Not a valid URL, treat as regular barcode
+        console.error("Scanned text is not a valid URL, treating as barcode");
+      }
+    }
+
     setSearchBarcode(barcode);
   };
 
