@@ -145,18 +145,6 @@ const ScanPage = () => {
       <Header />
 
       <main className="container py-6 max-w-lg mx-auto">
-        {/* User Info */}
-        {user && (
-          <div className="flex items-center justify-between mb-4 p-3 bg-secondary/50 rounded-lg">
-            <span className="text-sm text-muted-foreground">
-              Login sebagai: <span className="font-medium text-foreground">{user.email}</span>
-            </span>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              Logout
-            </Button>
-          </div>
-        )}
-
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground mb-2">Input Data Suhu</h1>
           <p className="text-muted-foreground text-sm">

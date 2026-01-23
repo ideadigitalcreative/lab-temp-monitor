@@ -112,15 +112,21 @@ export function Header() {
           )}
 
           {user && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={signOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border/50">
+              <span className="hidden xl:inline text-xs text-muted-foreground mr-1">
+                {user.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-white hover:bg-destructive transition-all"
+                onClick={signOut}
+                title="Keluar"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
           )}
         </nav>
       </div>
