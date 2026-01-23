@@ -9,9 +9,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { TemperatureLog } from '@/types';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+
+interface TemperatureLog {
+  id: string;
+  roomId: string;
+  roomName?: string;
+  temperature: number;
+  humidity: number;
+  recordedAt: Date;
+}
 
 interface TemperatureChartProps {
   data: TemperatureLog[];

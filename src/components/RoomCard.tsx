@@ -1,4 +1,4 @@
-import { RoomWithLatestReading } from '@/types';
+import { RoomWithLatestReading } from '@/hooks/useRooms';
 import { StatusBadge } from './StatusBadge';
 import { Thermometer, Droplets, MapPin, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -55,7 +55,7 @@ export function RoomCard({ room, onClick }: RoomCardProps) {
           <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
             <Clock className="w-3 h-3" />
             <span>
-              Update: {format(latestReading.recordedAt, 'dd MMM yyyy, HH:mm', { locale: id })}
+              Update: {format(new Date(latestReading.recorded_at), 'dd MMM yyyy, HH:mm', { locale: id })}
             </span>
           </div>
         </div>

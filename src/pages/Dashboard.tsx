@@ -5,15 +5,16 @@ import { TemperatureChart } from '@/components/TemperatureChart';
 import { StatCard } from '@/components/StatCard';
 import { RoomFilter } from '@/components/RoomFilter';
 import {
-  getRoomsWithLatestReadings,
-  getAllLogs,
-  mockRooms,
-} from '@/data/mockData';
+  useRooms,
+  useRoomsWithLatestReadings,
+  useTemperatureLogs,
+} from '@/hooks/useRooms';
 import {
   Thermometer,
   Droplets,
   Building2,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
@@ -25,11 +26,13 @@ const Dashboard = () => {
     to: new Date(),
   });
 
-  const roomsWithReadings = useMemo(() => getRoomsWithLatestReadings(), []);
-
-  const filteredLogs = useMemo(() => {
-    return getAllLogs(selectedRoom || undefined, dateRange?.from, dateRange?.to);
-  }, [selectedRoom, dateRange]);
+  const { data: rooms, isLoading: roomsLoading } = useRooms();
+  const { data: roomsWithReadings, isLoading: readingsLoading } = useRoomsWithLatestReadings();
+  const { data: temperatureLogs, isLoading: logsLoading } = useTemperatureLogs(
+    selectedRoom || undefined,
+    dateRange?.from,
+    dateRange?.to
+  );
 
   const stats = useMemo(() => {
     const latest = roomsWithReadings.filter((r) => r.latestReading);
@@ -46,7 +49,7 @@ const Dashboard = () => {
       avgHumidity: humidities.length
         ? (humidities.reduce((a, b) => a + b, 0) / humidities.length).toFixed(1)
         : '-',
-      totalRooms: mockRooms.length,
+      totalRooms: roomsWithReadings.length,
       warnings,
     };
   }, [roomsWithReadings]);
@@ -54,6 +57,19 @@ const Dashboard = () => {
   const displayedRooms = selectedRoom
     ? roomsWithReadings.filter((r) => r.id === selectedRoom)
     : roomsWithReadings;
+
+  const chartData = useMemo(() => {
+    return (temperatureLogs || []).map((log) => ({
+      id: log.id,
+      roomId: log.room_id,
+      roomName: log.rooms?.name,
+      temperature: log.temperature,
+      humidity: log.humidity,
+      recordedAt: new Date(log.recorded_at),
+    }));
+  }, [temperatureLogs]);
+
+  const isLoading = roomsLoading || readingsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,67 +86,86 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Rata-rata Suhu"
-            value={`${stats.avgTemp}°C`}
-            icon={<Thermometer className="w-5 h-5" />}
-          />
-          <StatCard
-            title="Rata-rata Kelembaban"
-            value={`${stats.avgHumidity}%`}
-            icon={<Droplets className="w-5 h-5" />}
-          />
-          <StatCard
-            title="Total Ruangan"
-            value={stats.totalRooms}
-            icon={<Building2 className="w-5 h-5" />}
-          />
-          <StatCard
-            title="Perlu Perhatian"
-            value={stats.warnings}
-            icon={<AlertTriangle className="w-5 h-5" />}
-            className={stats.warnings > 0 ? 'border-status-warning' : ''}
-          />
-        </div>
-
-        {/* Filters */}
-        <div className="glass-card rounded-xl p-4">
-          <RoomFilter
-            rooms={mockRooms}
-            selectedRoom={selectedRoom}
-            dateRange={dateRange}
-            onRoomChange={setSelectedRoom}
-            onDateRangeChange={setDateRange}
-          />
-        </div>
-
-        {/* Chart */}
-        {filteredLogs.length > 0 && (
-          <TemperatureChart
-            data={filteredLogs.slice(-50)}
-            title={
-              selectedRoom
-                ? `Grafik ${mockRooms.find((r) => r.id === selectedRoom)?.name}`
-                : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
-            }
-          />
-        )}
-
-        {/* Room Cards */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Daftar Ruangan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedRooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onClick={() => setSelectedRoom(room.id)}
-              />
-            ))}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Memuat data...</span>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Rata-rata Suhu"
+                value={`${stats.avgTemp}°C`}
+                icon={<Thermometer className="w-5 h-5" />}
+              />
+              <StatCard
+                title="Rata-rata Kelembaban"
+                value={`${stats.avgHumidity}%`}
+                icon={<Droplets className="w-5 h-5" />}
+              />
+              <StatCard
+                title="Total Ruangan"
+                value={stats.totalRooms}
+                icon={<Building2 className="w-5 h-5" />}
+              />
+              <StatCard
+                title="Perlu Perhatian"
+                value={stats.warnings}
+                icon={<AlertTriangle className="w-5 h-5" />}
+                className={stats.warnings > 0 ? 'border-status-warning' : ''}
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="glass-card rounded-xl p-4">
+              <RoomFilter
+                rooms={rooms || []}
+                selectedRoom={selectedRoom}
+                dateRange={dateRange}
+                onRoomChange={setSelectedRoom}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
+
+            {/* Chart */}
+            {chartData.length > 0 ? (
+              <TemperatureChart
+                data={chartData.slice(-50)}
+                title={
+                  selectedRoom
+                    ? `Grafik ${rooms?.find((r) => r.id === selectedRoom)?.name}`
+                    : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
+                }
+              />
+            ) : (
+              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                <p>Belum ada data suhu untuk periode ini</p>
+              </div>
+            )}
+
+            {/* Room Cards */}
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Daftar Ruangan</h2>
+              {displayedRooms.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {displayedRooms.map((room) => (
+                    <RoomCard
+                      key={room.id}
+                      room={room}
+                      onClick={() => setSelectedRoom(room.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Tidak ada ruangan ditemukan
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       {/* Footer */}

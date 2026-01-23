@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      rooms: {
+        Row: {
+          barcode: string
+          created_at: string
+          id: string
+          location: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      temperature_logs: {
+        Row: {
+          humidity: number
+          id: string
+          recorded_at: string
+          recorded_by: string | null
+          room_id: string
+          temperature: number
+        }
+        Insert: {
+          humidity: number
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          room_id: string
+          temperature: number
+        }
+        Update: {
+          humidity?: number
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          room_id?: string
+          temperature?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "temperature_logs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

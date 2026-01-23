@@ -2,13 +2,19 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Room } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Thermometer, Droplets, MapPin, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+
+interface Room {
+  id: string;
+  name: string;
+  location: string;
+  barcode: string;
+}
 
 const temperatureSchema = z.object({
   temperature: z
@@ -47,8 +53,8 @@ export function TemperatureInputForm({
     resolver: zodResolver(temperatureSchema),
   });
 
-  const handleFormSubmit = (data: TemperatureFormData) => {
-    onSubmit(data);
+  const handleFormSubmit = async (data: TemperatureFormData) => {
+    await onSubmit(data);
     setSubmitted(true);
     setTimeout(() => {
       reset();
