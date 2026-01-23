@@ -22,7 +22,7 @@ export function StatCard({ title, value, subtitle, icon, className, iconClassNam
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
-        <div className={cn("p-3 rounded-lg", iconClassName || "bg-accent text-primary")}>
+        <div className={cn("p-2 md:p-3 rounded-lg", iconClassName || "bg-accent text-primary")}>
           {icon}
         </div>
       </div>

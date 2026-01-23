@@ -23,6 +23,17 @@ import { toast } from 'sonner';
 import { Trash2, UserPlus, Shield, ShieldOff, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+
 interface Profile {
     id: string;
     email: string;
@@ -55,6 +66,33 @@ export default function UserManagement() {
     // We'll trust the user to sign up via the auth page or implement a backend function later for proper invite flow.
     // For now, let's focus on managing ROLES of existing users.
 
+    // Create User (Sign Up)
+    const handleCreateUser = async () => {
+        try {
+            const { error } = await supabase.auth.signUp({
+                email: newUserEmail,
+                password: newUserPassword,
+                options: {
+                    data: {
+                        full_name: newUserEmail.split('@')[0],
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            toast.success('User account created! You may need to verify email.');
+            setIsCreating(false);
+            setNewUserEmail('');
+            setNewUserPassword('');
+            // Note: This often logs the admin out if auto-confirm is on.
+            // If email confirm is on, it might not log out immediately but session state might change.
+
+        } catch (error: any) {
+            toast.error(error.message);
+        }
+    };
+
     // Update Role Mutation
     const updateRole = useMutation({
         mutationFn: async ({ id, role }: { id: string; role: 'admin' | 'user' }) => {
@@ -83,10 +121,51 @@ export default function UserManagement() {
                         <h1 className="text-3xl font-bold">User Management</h1>
                         <p className="text-muted-foreground">Manage user access and roles</p>
                     </div>
-                    {/* <Button onClick={() => setIsCreating(true)}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add User
-          </Button> */}
+                    <Dialog open={isCreating} onOpenChange={setIsCreating}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Add User
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Add New User</DialogTitle>
+                                <DialogDescription>
+                                    Create a new user account. Warning: This will attempt to sign up a new user.
+                                    If successful, it might affect your current session.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="email" className="text-right">
+                                        Email
+                                    </Label>
+                                    <Input
+                                        id="email"
+                                        value={newUserEmail}
+                                        onChange={(e) => setNewUserEmail(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="password" className="text-right">
+                                        Password
+                                    </Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={newUserPassword}
+                                        onChange={(e) => setNewUserPassword(e.target.value)}
+                                        className="col-span-3"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleCreateUser}>Create User</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 {/* User List */}
@@ -111,8 +190,8 @@ export default function UserManagement() {
                                         <TableCell className="font-medium">{profile.email}</TableCell>
                                         <TableCell>
                                             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.role === 'admin'
-                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                                                 }`}>
                                                 {profile.role}
                                             </div>

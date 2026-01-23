@@ -1,13 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { usePWA } from '@/hooks/usePWA';
 import { Button } from '@/components/ui/button';
 
 export function Header() {
   const location = useLocation();
   const { data: profile } = useProfile();
+  const { signOut, user } = useAuth();
   const { isInstallable, installApp } = usePWA();
 
   const navLinks = [
@@ -65,6 +67,18 @@ export function Header() {
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Install</span>
+            </Button>
+          )}
+
+          {user && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={signOut}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           )}
         </nav>

@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import RoomManagement from "./pages/admin/RoomManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import { AdminRoute } from "./components/AdminRoute";
+import { MobileScanFAB } from "./components/MobileScanFAB";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <MobileScanFAB />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

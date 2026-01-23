@@ -21,8 +21,9 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon } from 'lucide-react';
-import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, Room } from '@/hooks/useRooms';
+import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon, FileText, X, Check } from 'lucide-react';
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, Room, useTemperatureLogs, useUpdateTemperatureLog, useDeleteTemperatureLog, TemperatureLog } from '@/hooks/useRooms';
+import { format } from 'date-fns';
 import QRCode from 'react-qr-code';
 
 export default function RoomManagement() {
@@ -35,6 +36,7 @@ export default function RoomManagement() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isQRDialogOpen, setIsQRDialogOpen] = useState(false);
     const [selectedRoomForQR, setSelectedRoomForQR] = useState<Room | null>(null);
+    const [viewingLogsRoom, setViewingLogsRoom] = useState<Room | null>(null);
     const [editingRoom, setEditingRoom] = useState<Room | null>(null);
 
     // Form state
@@ -168,6 +170,9 @@ export default function RoomManagement() {
                                                         <QrIcon className="h-3 w-3 mr-2" />
                                                         QR Code
                                                     </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => setViewingLogsRoom(room)} title="View Data">
+                                                        <FileText className="h-4 w-4 text-green-600" />
+                                                    </Button>
                                                     <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(room)}>
                                                         <Pencil className="h-4 w-4 text-blue-500" />
                                                     </Button>
@@ -183,10 +188,10 @@ export default function RoomManagement() {
                         </Table>
                     )}
                 </div>
-            </main>
+            </main >
 
             {/* Create/Edit Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            < Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingRoom ? 'Edit Room' : 'Add New Room'}</DialogTitle>
@@ -232,9 +237,9 @@ export default function RoomManagement() {
                         </DialogFooter>
                     </form>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
             {/* QR Code Dialog */}
-            <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
+            < Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen} >
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>QR Code for {selectedRoomForQR?.name}</DialogTitle>
@@ -288,7 +293,156 @@ export default function RoomManagement() {
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
-        </div>
+            </Dialog >
+
+            {/* Temperature Logs Management Dialog */}
+            < TemperatureLogsDialog
+                room={viewingLogsRoom}
+                open={!!viewingLogsRoom
+                }
+                onOpenChange={(open) => !open && setViewingLogsRoom(null)}
+            />
+        </div >
+    );
+}
+
+function TemperatureLogsDialog({ room, open, onOpenChange }: { room: Room | null, open: boolean, onOpenChange: (open: boolean) => void }) {
+    const { data: logs, isLoading } = useTemperatureLogs(room?.id);
+    const updateLog = useUpdateTemperatureLog();
+    const deleteLog = useDeleteTemperatureLog();
+
+    // Inline editing state
+    const [editingLogId, setEditingLogId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ temperature: 0, humidity: 0 });
+
+    const startEdit = (log: TemperatureLog) => {
+        setEditingLogId(log.id);
+        setEditForm({ temperature: log.temperature, humidity: log.humidity });
+    };
+
+    const cancelEdit = () => {
+        setEditingLogId(null);
+    };
+
+    const saveEdit = async (id: string) => {
+        try {
+            await updateLog.mutateAsync({
+                id,
+                temperature: editForm.temperature,
+                humidity: editForm.humidity
+            });
+            toast.success('Data updated');
+            setEditingLogId(null);
+        } catch (e: any) {
+            toast.error('Failed to update');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Delete this record?')) {
+            try {
+                await deleteLog.mutateAsync(id);
+                toast.success('Record deleted');
+            } catch (e) {
+                toast.error('Failed to delete');
+            }
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Temperature Data: {room?.name}</DialogTitle>
+                </DialogHeader>
+
+                <div className="mt-4">
+                    {isLoading ? (
+                        <div className="flex justify-center p-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Time</TableHead>
+                                    <TableHead>Temperature (°C)</TableHead>
+                                    <TableHead>Humidity (%)</TableHead>
+                                    <TableHead>Recorded By</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {logs?.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                                            No data recorded yet
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    logs?.map((log) => (
+                                        <TableRow key={log.id}>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {format(new Date(log.recorded_at), 'PP p')}
+                                            </TableCell>
+                                            <TableCell>
+                                                {editingLogId === log.id ? (
+                                                    <Input
+                                                        type="number"
+                                                        value={editForm.temperature}
+                                                        onChange={e => setEditForm({ ...editForm, temperature: parseFloat(e.target.value) })}
+                                                        className="w-24 h-8"
+                                                    />
+                                                ) : (
+                                                    <span className={log.temperature > 25 || log.temperature < 18 ? 'text-red-500 font-bold' : ''}>
+                                                        {log.temperature}°C
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {editingLogId === log.id ? (
+                                                    <Input
+                                                        type="number"
+                                                        value={editForm.humidity}
+                                                        onChange={e => setEditForm({ ...editForm, humidity: parseFloat(e.target.value) })}
+                                                        className="w-24 h-8"
+                                                    />
+                                                ) : (
+                                                    <span>{log.humidity}%</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">
+                                                {log.recorded_by ? 'User/Admin' : 'System'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {editingLogId === log.id ? (
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button variant="ghost" size="icon" onClick={() => saveEdit(log.id)} className="h-8 w-8 text-green-600">
+                                                            <Check className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 text-gray-500">
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button variant="ghost" size="icon" onClick={() => startEdit(log)} className="h-8 w-8 text-blue-500">
+                                                            <Pencil className="h-3 w-3" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(log.id)} className="h-8 w-8 text-red-500">
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

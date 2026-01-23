@@ -98,25 +98,25 @@ const Dashboard = () => {
               <StatCard
                 title="Rata-rata Suhu"
                 value={`${stats.avgTemp}°C`}
-                icon={<Thermometer className="w-5 h-5" />}
+                icon={<Thermometer className="w-4 h-4 md:w-5 md:h-5" />}
                 iconClassName="text-blue-500 bg-blue-500/10"
               />
               <StatCard
                 title="Rata-rata Kelembaban"
                 value={`${stats.avgHumidity}%`}
-                icon={<Droplets className="w-5 h-5" />}
+                icon={<Droplets className="w-4 h-4 md:w-5 md:h-5" />}
                 iconClassName="text-cyan-500 bg-cyan-500/10"
               />
               <StatCard
                 title="Total Ruangan"
                 value={stats.totalRooms}
-                icon={<Building2 className="w-5 h-5" />}
+                icon={<Building2 className="w-4 h-4 md:w-5 md:h-5" />}
                 iconClassName="text-violet-500 bg-violet-500/10"
               />
               <StatCard
                 title="Perlu Perhatian"
                 value={stats.warnings}
-                icon={<AlertTriangle className="w-5 h-5" />}
+                icon={<AlertTriangle className="w-4 h-4 md:w-5 md:h-5" />}
                 className={stats.warnings > 0 ? 'border-status-warning' : ''}
                 iconClassName={stats.warnings > 0 ? "text-orange-500 bg-orange-500/10" : "text-green-500 bg-green-500/10"}
               />

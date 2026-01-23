@@ -179,24 +179,6 @@ const ScanPage = () => {
                   />
                 </div>
 
-                {/* Manual Barcode Input */}
-                <div className="glass-card rounded-xl p-5">
-                  <h3 className="font-medium text-sm text-muted-foreground mb-3">
-                    Atau masukkan kode barcode secara manual:
-                  </h3>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Contoh: LAB-MIKRO-001"
-                      value={manualBarcode}
-                      onChange={(e) => setManualBarcode(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleManualBarcodeSubmit()}
-                      className="font-mono"
-                    />
-                    <Button onClick={handleManualBarcodeSubmit} disabled={searchingRoom}>
-                      {searchingRoom ? 'Mencari...' : 'Cari'}
-                    </Button>
-                  </div>
-                </div>
               </>
             ) : (
               <div className="glass-card rounded-xl p-5">

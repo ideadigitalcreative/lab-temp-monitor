@@ -282,3 +282,45 @@ export function useDeleteRoom() {
     },
   });
 }
+
+// Temperature Log Management Mutations (Admin Only)
+export function useUpdateTemperatureLog() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<TemperatureLog> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('temperature_logs')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temperature_logs'] });
+      queryClient.invalidateQueries({ queryKey: ['latest_temperature_logs'] });
+    },
+  });
+}
+
+export function useDeleteTemperatureLog() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('temperature_logs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['temperature_logs'] });
+      queryClient.invalidateQueries({ queryKey: ['latest_temperature_logs'] });
+    },
+  });
+}
