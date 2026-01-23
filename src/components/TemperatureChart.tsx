@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { useAuth } from '@/hooks/useAuth';
 
 interface TemperatureLog {
   id: string;
@@ -33,6 +34,7 @@ interface TemperatureChartProps {
 
 export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   const chartData = useMemo(() => {
     return data.map((log) => ({
@@ -43,43 +45,6 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
     }));
   }, [data]);
 
-  const downloadCSV = () => {
-    if (data.length === 0) {
-      toast.error('Tidak ada data untuk diunduh');
-      return;
-    }
-
-    try {
-      // Create CSV content
-      const headers = ['Waktu', 'Ruangan', 'Suhu (°C)', 'Kelembaban (%)'];
-      const csvRows = [
-        headers.join(','),
-        ...data.map(log => [
-          format(log.recordedAt, 'yyyy-MM-dd HH:mm:ss'),
-          log.roomName || 'Unknown',
-          log.temperature,
-          log.humidity
-        ].join(','))
-      ];
-
-      const csvString = csvRows.join('\n');
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', `Laporan_Sensor_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success('Laporan berhasil diunduh (CSV)');
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Gagal mengunduh laporan');
-    }
-  };
 
   const downloadPDF = async () => {
     if (!chartRef.current || data.length === 0) {
@@ -95,7 +60,8 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
         scale: 2,
         logging: false,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -189,26 +155,19 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
     <div className="glass-card rounded-xl p-5" ref={chartRef}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <h3 className="font-semibold text-lg">{title}</h3>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadCSV}
-            className="flex-1 sm:flex-none gap-2"
-          >
-            <Download className="w-4 h-4" />
-            CSV
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={downloadPDF}
-            className="flex-1 sm:flex-none gap-2 shadow-button"
-          >
-            <FileText className="w-4 h-4" />
-            Unduh PDF (Grafik)
-          </Button>
-        </div>
+        {user && (
+          <div className="flex gap-2 w-full sm:w-auto" data-html2canvas-ignore>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={downloadPDF}
+              className="flex-1 sm:flex-none gap-2 shadow-button"
+            >
+              <FileText className="w-4 h-4" />
+              Unduh PDF (Grafik)
+            </Button>
+          </div>
+        )}
       </div>
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
