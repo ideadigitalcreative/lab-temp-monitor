@@ -397,10 +397,12 @@ const ScanPage = () => {
           </div>
         ) : (
           <TemperatureInputForm
+            key={selectedRoom?.id || selectedEquipment?.id}
             room={selectedRoom || selectedEquipment!}
             onSubmit={handleSubmitTemperature}
             onReset={handleReset}
             isSubmitting={addTemperatureLog.isPending || addEquipmentLog.isPending}
+            showHumidity={!!selectedRoom}
           />
         )}
       </main>

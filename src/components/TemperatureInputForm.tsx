@@ -19,14 +19,16 @@ interface Asset {
 }
 
 const temperatureSchema = z.object({
-  temperature: z
-    .number({ required_error: 'Suhu wajib diisi' })
-    .min(0, 'Suhu minimal 0°C')
-    .max(50, 'Suhu maksimal 50°C'),
-  humidity: z
-    .number({ required_error: 'Kelembaban wajib diisi' })
+  temperature: z.coerce
+    .number({ required_error: 'Suhu wajib diisi', invalid_type_error: 'Suhu harus angka' })
+    .min(-50, 'Suhu minimal -50°C')
+    .max(100, 'Suhu maksimal 100°C'),
+  humidity: z.coerce
+    .number({ invalid_type_error: 'Kelembaban harus angka' })
     .min(0, 'Kelembaban minimal 0%')
-    .max(100, 'Kelembaban maksimal 100%'),
+    .max(100, 'Kelembaban maksimal 100%')
+    .optional()
+    .or(z.literal('')),
 });
 
 type TemperatureFormData = z.infer<typeof temperatureSchema>;
@@ -36,6 +38,7 @@ interface TemperatureInputFormProps {
   onSubmit: (data: TemperatureFormData) => void;
   onReset: () => void;
   isSubmitting?: boolean;
+  showHumidity?: boolean;
 }
 
 export function TemperatureInputForm({
@@ -43,6 +46,7 @@ export function TemperatureInputForm({
   onSubmit,
   onReset,
   isSubmitting = false,
+  showHumidity = true,
 }: TemperatureInputFormProps) {
   const [submitted, setSubmitted] = useState(false);
 
@@ -77,7 +81,7 @@ export function TemperatureInputForm({
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">Data Tersimpan!</h3>
         <p className="text-muted-foreground text-sm">
-          Data {room.type ? 'alat' : 'ruangan'} {room.name} berhasil dicatat.
+          Data {!showHumidity ? 'alat' : 'ruangan'} {room.name} berhasil dicatat.
         </p>
       </div>
     );
@@ -88,7 +92,7 @@ export function TemperatureInputForm({
       {/* Asset Info */}
       <div className="glass-card rounded-xl p-5 animate-slide-up">
         <h3 className="font-semibold text-lg text-foreground mb-3">
-          {room.type ? 'Alat Terpilih' : 'Ruangan Terpilih'}
+          {!showHumidity ? 'Alat Terpilih' : 'Ruangan Terpilih'}
         </h3>
         <div className="space-y-2">
           <p className="text-xl font-semibold text-primary">{room.name}</p>
@@ -126,7 +130,7 @@ export function TemperatureInputForm({
             )}
           </div>
 
-          {!room.type && (
+          {showHumidity && (
             <div className="space-y-2">
               <Label htmlFor="humidity" className="flex items-center gap-2">
                 <Droplets className="w-4 h-4 text-chart-humidity" />
