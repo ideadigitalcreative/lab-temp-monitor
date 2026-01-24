@@ -54,7 +54,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80 cursor-pointer">
           <div className="p-2 rounded-lg bg-primary text-primary-foreground">
             <Activity className="w-5 h-5" />
           </div>
