@@ -189,96 +189,98 @@ const ScanPage = () => {
           </div>
         )}
 
-        {!selectedRoom && !isConfirming ? (
-          <div className="space-y-6">
-            {/* Mode Toggle */}
-            <div className="flex gap-2 p-1 bg-secondary rounded-lg">
-              <Button
-                variant={inputMode === 'scan' ? 'default' : 'ghost'}
-                className="flex-1"
-                onClick={() => setInputMode('scan')}
-              >
-                <ScanBarcode className="w-4 h-4 mr-2" />
-                Scan Barcode
-              </Button>
-              <Button
-                variant={inputMode === 'manual' ? 'default' : 'ghost'}
-                className="flex-1"
-                onClick={() => setInputMode('manual')}
-              >
-                <Keyboard className="w-4 h-4 mr-2" />
-                Input Manual
-              </Button>
-            </div>
+        {!selectedRoom ? (
+          !isConfirming && (
+            <div className="space-y-6">
+              {/* Mode Toggle */}
+              <div className="flex gap-2 p-1 bg-secondary rounded-lg">
+                <Button
+                  variant={inputMode === 'scan' ? 'default' : 'ghost'}
+                  className="flex-1"
+                  onClick={() => setInputMode('scan')}
+                >
+                  <ScanBarcode className="w-4 h-4 mr-2" />
+                  Scan Barcode
+                </Button>
+                <Button
+                  variant={inputMode === 'manual' ? 'default' : 'ghost'}
+                  className="flex-1"
+                  onClick={() => setInputMode('manual')}
+                >
+                  <Keyboard className="w-4 h-4 mr-2" />
+                  Input Manual
+                </Button>
+              </div>
 
-            {inputMode === 'scan' ? (
-              <>
-                {/* Barcode Scanner */}
+              {inputMode === 'scan' ? (
+                <>
+                  {/* Barcode Scanner */}
+                  <div className="glass-card rounded-xl p-5">
+                    <h2 className="font-semibold mb-4 flex items-center gap-2">
+                      <ScanBarcode className="w-5 h-5 text-primary" />
+                      Pindai Barcode
+                    </h2>
+                    <BarcodeScanner
+                      onScan={handleBarcodeScan}
+                      onError={(error) => setScanError(error)}
+                    />
+                  </div>
+
+                </>
+              ) : (
                 <div className="glass-card rounded-xl p-5">
                   <h2 className="font-semibold mb-4 flex items-center gap-2">
-                    <ScanBarcode className="w-5 h-5 text-primary" />
-                    Pindai Barcode
+                    <Keyboard className="w-5 h-5 text-primary" />
+                    Pilih Ruangan
                   </h2>
-                  <BarcodeScanner
-                    onScan={handleBarcodeScan}
-                    onError={(error) => setScanError(error)}
-                  />
+                  <Select onValueChange={handleManualRoomSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pilih ruangan laboratorium..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rooms?.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          <div className="flex flex-col">
+                            <span>{room.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {room.location}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+              )}
 
-              </>
-            ) : (
-              <div className="glass-card rounded-xl p-5">
-                <h2 className="font-semibold mb-4 flex items-center gap-2">
-                  <Keyboard className="w-5 h-5 text-primary" />
-                  Pilih Ruangan
-                </h2>
-                <Select onValueChange={handleManualRoomSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih ruangan laboratorium..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rooms?.map((room) => (
-                      <SelectItem key={room.id} value={room.id}>
-                        <div className="flex flex-col">
-                          <span>{room.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {room.location}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Error Display */}
-            {scanError && (
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-status-critical-bg text-status-critical animate-slide-up">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Error Pemberitahuan</p>
-                  <p className="text-sm opacity-80">{scanError}</p>
+              {/* Error Display */}
+              {scanError && (
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-status-critical-bg text-status-critical animate-slide-up">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Error Pemberitahuan</p>
+                    <p className="text-sm opacity-80">{scanError}</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Available Barcodes Info */}
-            <div className="bg-secondary/50 rounded-xl p-4">
-              <h4 className="font-medium text-sm mb-3">Kode Barcode Tersedia:</h4>
-              <div className="flex flex-wrap gap-2">
-                {rooms?.map((room) => (
-                  <button
-                    key={room.id}
-                    onClick={() => handleBarcodeScan(room.barcode)}
-                    className="text-xs font-mono px-2 py-1 rounded bg-background hover:bg-accent transition-colors"
-                  >
-                    {room.barcode}
-                  </button>
-                ))}
+              {/* Available Barcodes Info */}
+              <div className="bg-secondary/50 rounded-xl p-4">
+                <h4 className="font-medium text-sm mb-3">Kode Barcode Tersedia:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {rooms?.map((room) => (
+                    <button
+                      key={room.id}
+                      onClick={() => handleBarcodeScan(room.barcode)}
+                      className="text-xs font-mono px-2 py-1 rounded bg-background hover:bg-accent transition-colors"
+                    >
+                      {room.barcode}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )
         ) : (
           <TemperatureInputForm
             room={selectedRoom}
