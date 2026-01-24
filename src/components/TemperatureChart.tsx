@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  ReferenceLine,
 } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -227,6 +228,7 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               />
             )}
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <ReferenceLine yAxisId="temp" y={0} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: '0°C', position: 'right', fill: 'hsl(var(--destructive))', fontSize: 10 }} opacity={0.5} />
             <Legend
               verticalAlign="top"
               align="right"
