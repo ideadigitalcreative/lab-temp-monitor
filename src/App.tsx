@@ -9,6 +9,7 @@ import ScanPage from "./pages/ScanPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import RoomManagement from "./pages/admin/RoomManagement";
+import EquipmentManagement from "./pages/admin/EquipmentManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import { AdminRoute } from "./components/AdminRoute";
 import { MobileScanFAB } from "./components/MobileScanFAB";
@@ -31,6 +32,11 @@ const App = () => (
             <Route path="/admin/rooms" element={
               <AdminRoute>
                 <RoomManagement />
+              </AdminRoute>
+            } />
+            <Route path="/admin/equipment" element={
+              <AdminRoute>
+                <EquipmentManagement />
               </AdminRoute>
             } />
             <Route path="/admin/users" element={

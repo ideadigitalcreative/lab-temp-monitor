@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize, Box } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +21,7 @@ export function Header() {
   if (profile?.role === 'admin') {
     navLinks.push(
       { href: '/admin/rooms', label: 'Rooms', icon: DoorOpen },
+      { href: '/admin/equipment', label: 'Equipment', icon: Box },
       { href: '/admin/users', label: 'Users', icon: Users }
     );
   }

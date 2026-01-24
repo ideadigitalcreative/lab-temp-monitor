@@ -5,15 +5,17 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Thermometer, Droplets, MapPin, CheckCircle } from 'lucide-react';
+import { Thermometer, Droplets, MapPin, CheckCircle, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-interface Room {
+interface Asset {
   id: string;
   name: string;
   location: string;
   barcode: string;
+  type?: string;
 }
 
 const temperatureSchema = z.object({
@@ -30,7 +32,7 @@ const temperatureSchema = z.object({
 type TemperatureFormData = z.infer<typeof temperatureSchema>;
 
 interface TemperatureInputFormProps {
-  room: Room;
+  room: Asset;
   onSubmit: (data: TemperatureFormData) => void;
   onReset: () => void;
   isSubmitting?: boolean;
@@ -47,10 +49,14 @@ export function TemperatureInputForm({
   const {
     register,
     handleSubmit,
-    formState: { errors },
     reset,
+    formState: { errors },
   } = useForm<TemperatureFormData>({
     resolver: zodResolver(temperatureSchema),
+    defaultValues: {
+      temperature: undefined,
+      humidity: undefined,
+    },
   });
 
   const handleFormSubmit = async (data: TemperatureFormData) => {
@@ -71,7 +77,7 @@ export function TemperatureInputForm({
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">Data Tersimpan!</h3>
         <p className="text-muted-foreground text-sm">
-          Data suhu ruangan {room.name} berhasil dicatat.
+          Data {room.type ? 'alat' : 'ruangan'} {room.name} berhasil dicatat.
         </p>
       </div>
     );
@@ -79,14 +85,16 @@ export function TemperatureInputForm({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      {/* Room Info */}
+      {/* Asset Info */}
       <div className="glass-card rounded-xl p-5 animate-slide-up">
-        <h3 className="font-semibold text-lg text-foreground mb-3">Ruangan Terpilih</h3>
+        <h3 className="font-semibold text-lg text-foreground mb-3">
+          {room.type ? 'Alat Terpilih' : 'Ruangan Terpilih'}
+        </h3>
         <div className="space-y-2">
           <p className="text-xl font-semibold text-primary">{room.name}</p>
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <MapPin className="w-4 h-4" />
-            <span>{room.location}</span>
+            <span>{room.location} {room.type && `(${room.type})`}</span>
           </div>
           <p className="text-xs text-muted-foreground font-mono">
             Barcode: {room.barcode}
@@ -94,41 +102,51 @@ export function TemperatureInputForm({
         </div>
       </div>
 
-      {/* Input Fields */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="temperature" className="flex items-center gap-2">
-            <Thermometer className="w-4 h-4 text-chart-temperature" />
-            Suhu (°C)
-          </Label>
-          <Input
-            id="temperature"
-            type="number"
-            step="0.1"
-            placeholder="22.5"
-            className="font-mono text-lg"
-            {...register('temperature', { valueAsNumber: true })}
-          />
-          {errors.temperature && (
-            <p className="text-sm text-status-critical">{errors.temperature.message}</p>
-          )}
-        </div>
+      {/* Input Form */}
+      <div className="glass-card rounded-xl p-6 space-y-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="temperature" className="flex items-center gap-2">
+              <Thermometer className="w-4 h-4 text-chart-temperature" />
+              Suhu (°C)
+            </Label>
+            <Input
+              id="temperature"
+              type="number"
+              step="0.1"
+              placeholder="Masukkan suhu..."
+              className={cn(
+                "text-lg font-mono focus-visible:ring-chart-temperature",
+                errors.temperature && "border-destructive focus-visible:ring-destructive"
+              )}
+              {...register('temperature')}
+            />
+            {errors.temperature && (
+              <p className="text-xs text-destructive mt-1">{errors.temperature.message}</p>
+            )}
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="humidity" className="flex items-center gap-2">
-            <Droplets className="w-4 h-4 text-chart-humidity" />
-            Kelembaban (%)
-          </Label>
-          <Input
-            id="humidity"
-            type="number"
-            step="0.1"
-            placeholder="55"
-            className="font-mono text-lg"
-            {...register('humidity', { valueAsNumber: true })}
-          />
-          {errors.humidity && (
-            <p className="text-sm text-status-critical">{errors.humidity.message}</p>
+          {!room.type && (
+            <div className="space-y-2">
+              <Label htmlFor="humidity" className="flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-chart-humidity" />
+                Kelembaban (%)
+              </Label>
+              <Input
+                id="humidity"
+                type="number"
+                step="0.1"
+                placeholder="Masukkan kelembaban..."
+                className={cn(
+                  "text-lg font-mono focus-visible:ring-chart-humidity",
+                  errors.humidity && "border-destructive focus-visible:ring-destructive"
+                )}
+                {...register('humidity')}
+              />
+              {errors.humidity && (
+                <p className="text-xs text-destructive mt-1">{errors.humidity.message}</p>
+              )}
+            </div>
           )}
         </div>
       </div>

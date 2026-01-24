@@ -23,7 +23,7 @@ interface TemperatureLog {
   roomId: string;
   roomName?: string;
   temperature: number;
-  humidity: number;
+  humidity?: number;
   recordedAt: Date;
 }
 
@@ -112,7 +112,7 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
         pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm'), 20, y);
         pdf.text(log.roomName || '-', 70, y);
         pdf.text(`${log.temperature}°C`, 130, y);
-        pdf.text(`${log.humidity}%`, 170, y);
+        pdf.text(log.humidity !== undefined ? `${log.humidity}%` : '-', 170, y);
         y += 6;
       });
 
@@ -139,11 +139,13 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               <span className="text-muted-foreground">Suhu:</span>
               <span className="font-mono font-medium">{payload[0]?.value}°C</span>
             </p>
-            <p className="text-sm flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-chart-humidity" />
-              <span className="text-muted-foreground">Kelembaban:</span>
-              <span className="font-mono font-medium">{payload[1]?.value}%</span>
-            </p>
+            {payload[1]?.value !== undefined && (
+              <p className="text-sm flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-chart-humidity" />
+                <span className="text-muted-foreground">Kelembaban:</span>
+                <span className="font-mono font-medium">{payload[1]?.value}%</span>
+              </p>
+            )}
           </div>
         </div>
       );

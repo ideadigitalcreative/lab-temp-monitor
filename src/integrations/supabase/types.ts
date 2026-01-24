@@ -105,6 +105,68 @@ export type Database = {
           },
         ]
       }
+      equipment: {
+        Row: {
+          barcode: string
+          created_at: string
+          id: string
+          location: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_temperature_logs: {
+        Row: {
+          humidity: number | null
+          id: string
+          recorded_at: string
+          recorded_by: string | null
+          equipment_id: string
+          temperature: number
+        }
+        Insert: {
+          humidity?: number | null
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          equipment_id: string
+          temperature: number
+        }
+        Update: {
+          humidity?: number | null
+          id?: string
+          recorded_at?: string
+          recorded_by?: string | null
+          equipment_id?: string
+          temperature?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_temperature_logs_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

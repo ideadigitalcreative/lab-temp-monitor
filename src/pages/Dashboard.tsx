@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { RoomCard } from '@/components/RoomCard';
+import { EquipmentCard } from '@/components/EquipmentCard';
 import { TemperatureChart } from '@/components/TemperatureChart';
 import { StatCard } from '@/components/StatCard';
 import { RoomFilter } from '@/components/RoomFilter';
@@ -10,17 +11,26 @@ import {
   useTemperatureLogs,
 } from '@/hooks/useRooms';
 import {
+  useEquipment,
+  useEquipmentWithLatestReadings,
+  useEquipmentTemperatureLogs,
+} from '@/hooks/useEquipment';
+import {
   Thermometer,
   Droplets,
   Building2,
   AlertTriangle,
   Loader2,
+  Box,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Dashboard = () => {
+  const [activeTab, setActiveTab] = useState<'rooms' | 'equipment'>('rooms');
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
@@ -34,29 +44,43 @@ const Dashboard = () => {
     dateRange?.to
   );
 
+  const { data: equipment, isLoading: equipmentListLoading } = useEquipment();
+  const { data: equipmentWithReadings, isLoading: equipmentReadingsLoading } = useEquipmentWithLatestReadings();
+  const { data: equipmentLogs, isLoading: equipmentLogsLoading } = useEquipmentTemperatureLogs(
+    selectedEquipment || undefined,
+    dateRange?.from,
+    dateRange?.to
+  );
+
   const stats = useMemo(() => {
-    const latest = roomsWithReadings.filter((r) => r.latestReading);
-    const temps = latest.map((r) => r.latestReading!.temperature);
-    const humidities = latest.map((r) => r.latestReading!.humidity);
-    const warnings = roomsWithReadings.filter(
-      (r) => r.status === 'warning' || r.status === 'critical'
-    ).length;
+    const latestRooms = roomsWithReadings.filter((r) => r.latestReading);
+    const latestEquip = equipmentWithReadings.filter((e) => e.latestReading);
+
+    const temps = [
+      ...latestRooms.map((r) => r.latestReading!.temperature),
+      ...latestEquip.map((e) => e.latestReading!.temperature)
+    ];
+
+    const warnings =
+      roomsWithReadings.filter((r) => r.status === 'warning' || r.status === 'critical').length +
+      equipmentWithReadings.filter((e) => e.status === 'warning' || e.status === 'critical').length;
 
     return {
       avgTemp: temps.length
         ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
         : '-',
-      avgHumidity: humidities.length
-        ? (humidities.reduce((a, b) => a + b, 0) / humidities.length).toFixed(1)
-        : '-',
-      totalRooms: roomsWithReadings.length,
+      totalAssets: roomsWithReadings.length + equipmentWithReadings.length,
       warnings,
     };
-  }, [roomsWithReadings]);
+  }, [roomsWithReadings, equipmentWithReadings]);
 
   const displayedRooms = selectedRoom
     ? roomsWithReadings.filter((r) => r.id === selectedRoom)
     : roomsWithReadings;
+
+  const displayedEquipment = selectedEquipment
+    ? equipmentWithReadings.filter((e) => e.id === selectedEquipment)
+    : equipmentWithReadings;
 
   const chartData = useMemo(() => {
     return (temperatureLogs || []).map((log) => ({
@@ -69,7 +93,17 @@ const Dashboard = () => {
     }));
   }, [temperatureLogs]);
 
-  const isLoading = roomsLoading || readingsLoading;
+  const equipmentChartData = useMemo(() => {
+    return (equipmentLogs || []).map((log) => ({
+      id: log.id,
+      roomId: log.equipment_id,
+      roomName: log.equipment?.name,
+      temperature: log.temperature,
+      recordedAt: new Date(log.recorded_at),
+    }));
+  }, [equipmentLogs]);
+
+  const isLoading = roomsLoading || readingsLoading || equipmentListLoading || equipmentReadingsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,10 +113,10 @@ const Dashboard = () => {
         {/* Hero Section */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Monitoring Suhu Laboratorium
+            Monitoring Lab & Equipment
           </h1>
           <p className="text-muted-foreground">
-            Dashboard pemantauan suhu dan kelembaban real-time untuk semua ruangan
+            Pemantauan suhu dan kelembaban real-time untuk ruangan dan perangkat laboratorium
           </p>
         </div>
 
@@ -94,22 +128,16 @@ const Dashboard = () => {
         ) : (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
                 title="Rata-rata Suhu"
                 value={`${stats.avgTemp}°C`}
                 icon={<Thermometer className="w-4 h-4 md:w-5 md:h-5" />}
-                iconClassName="text-blue-500 bg-blue-500/10"
+                iconClassName="text-orange-500 bg-orange-500/10"
               />
               <StatCard
-                title="Rata-rata Kelembaban"
-                value={`${stats.avgHumidity}%`}
-                icon={<Droplets className="w-4 h-4 md:w-5 md:h-5" />}
-                iconClassName="text-cyan-500 bg-cyan-500/10"
-              />
-              <StatCard
-                title="Total Ruangan"
-                value={stats.totalRooms}
+                title="Total Area & Alat"
+                value={stats.totalAssets}
                 icon={<Building2 className="w-4 h-4 md:w-5 md:h-5" />}
                 iconClassName="text-violet-500 bg-violet-500/10"
               />
@@ -122,52 +150,132 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* Filters */}
-            <div className="glass-card rounded-xl p-4">
-              <RoomFilter
-                rooms={rooms || []}
-                selectedRoom={selectedRoom}
-                dateRange={dateRange}
-                onRoomChange={setSelectedRoom}
-                onDateRangeChange={setDateRange}
-              />
-            </div>
-
-            {/* Chart */}
-            {chartData.length > 0 ? (
-              <TemperatureChart
-                data={chartData.slice(-50)}
-                title={
-                  selectedRoom
-                    ? `Grafik ${rooms?.find((r) => r.id === selectedRoom)?.name}`
-                    : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
-                }
-              />
-            ) : (
-              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
-                <p>Belum ada data suhu untuk periode ini</p>
+            <Tabs defaultValue="rooms" className="w-full space-y-6" onValueChange={(v) => setActiveTab(v as any)}>
+              <div className="flex justify-center">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                  <TabsTrigger value="rooms" className="gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Ruangan
+                  </TabsTrigger>
+                  <TabsTrigger value="equipment" className="gap-2">
+                    <Box className="w-4 h-4" />
+                    Alat
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            )}
 
-            {/* Room Cards */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Daftar Ruangan</h2>
-              {displayedRooms.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {displayedRooms.map((room) => (
-                    <RoomCard
-                      key={room.id}
-                      room={room}
-                      onClick={() => setSelectedRoom(room.id)}
-                    />
-                  ))}
+              <TabsContent value="rooms" className="space-y-6 animate-fade-in">
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={rooms || []}
+                    selectedRoom={selectedRoom}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedRoom}
+                    onDateRangeChange={setDateRange}
+                  />
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Tidak ada ruangan ditemukan
+
+                {/* Chart */}
+                {chartData.length > 0 ? (
+                  <TemperatureChart
+                    data={chartData.slice(-50)}
+                    title={
+                      selectedRoom
+                        ? `Grafik ${rooms?.find((r) => r.id === selectedRoom)?.name}`
+                        : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
+                    }
+                  />
+                ) : (
+                  <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                    <p>Belum ada data suhu untuk periode ini</p>
+                  </div>
+                )}
+
+                {/* Room Cards */}
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Daftar Ruangan</h2>
+                  {displayedRooms.length > 0 ? (
+                    <div
+                      className={
+                        displayedRooms.length === 7
+                          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4"
+                          : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                      }
+                    >
+                      {displayedRooms.map((room, index) => (
+                        <div
+                          key={room.id}
+                          className={
+                            displayedRooms.length === 7
+                              ? (index < 3 ? "lg:col-span-4" : "lg:col-span-3")
+                              : ""
+                          }
+                        >
+                          <RoomCard
+                            room={room}
+                            onClick={() => setSelectedRoom(room.id)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada ruangan ditemukan
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+
+              <TabsContent value="equipment" className="space-y-6 animate-fade-in">
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={equipment?.map(e => ({ ...e, location: e.location })) || []}
+                    selectedRoom={selectedEquipment}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedEquipment}
+                    onDateRangeChange={setDateRange}
+                  />
+                </div>
+
+                {/* Chart */}
+                {equipmentChartData.length > 0 ? (
+                  <TemperatureChart
+                    data={equipmentChartData.slice(-50)}
+                    title={
+                      selectedEquipment
+                        ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name}`
+                        : 'Grafik Suhu Alat (Semua Alat)'
+                    }
+                  />
+                ) : (
+                  <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                    <p>Belum ada data suhu alat untuk periode ini</p>
+                  </div>
+                )}
+
+                {/* Equipment Cards */}
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Daftar Alat</h2>
+                  {displayedEquipment.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {displayedEquipment.map((item) => (
+                        <EquipmentCard
+                          key={item.id}
+                          equipment={item}
+                          onClick={() => setSelectedEquipment(item.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada alat ditemukan
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </main>
