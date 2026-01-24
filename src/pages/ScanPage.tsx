@@ -24,6 +24,8 @@ const ScanPage = () => {
   const [manualBarcode, setManualBarcode] = useState('');
   const [searchBarcode, setSearchBarcode] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmedRoom, setConfirmedRoom] = useState<Room | null>(null);
 
   const [searchParams] = useSearchParams();
   const urlRoomId = searchParams.get('roomId');
@@ -45,15 +47,27 @@ const ScanPage = () => {
   }, [urlRoomId, rooms, selectedRoom]);
 
   // Handle barcode search result
-  if (foundRoom && !selectedRoom) {
-    setSelectedRoom(foundRoom);
-    setSearchBarcode(null);
-    toast.success(`Ruangan ${foundRoom.name} ditemukan!`);
-  } else if (searchBarcode && !searchingRoom && !foundRoom && !selectedRoom) {
-    setScanError(`Barcode "${searchBarcode}" tidak ditemukan dalam sistem.`);
-    setSearchBarcode(null);
-    toast.error('Barcode tidak dikenali');
-  }
+  useEffect(() => {
+    if (foundRoom && !selectedRoom && !isConfirming) {
+      setConfirmedRoom(foundRoom);
+      setIsConfirming(true);
+      setSearchBarcode(null);
+
+      // Auto-confirm after 1.5 seconds or let user see it
+      const timer = setTimeout(() => {
+        setSelectedRoom(foundRoom);
+        setIsConfirming(false);
+        setConfirmedRoom(null);
+        toast.success(`Ruangan ${foundRoom.name} terdeteksi!`);
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    } else if (searchBarcode && !searchingRoom && !foundRoom && !selectedRoom) {
+      setScanError(`Barcode "${searchBarcode}" tidak ditemukan dalam sistem.`);
+      setSearchBarcode(null);
+      toast.error('Barcode tidak dikenali');
+    }
+  }, [foundRoom, selectedRoom, searchBarcode, searchingRoom, isConfirming]);
 
   const handleBarcodeScan = (barcode: string) => {
     setScanError(null);
@@ -67,8 +81,14 @@ const ScanPage = () => {
           // If we found a roomId in the URL, try to find the room by ID directly
           const room = rooms?.find(r => r.id === roomId);
           if (room) {
-            setSelectedRoom(room);
-            toast.success(`Ruangan ${room.name} ditemukan dari QR Link!`);
+            setConfirmedRoom(room);
+            setIsConfirming(true);
+            setTimeout(() => {
+              setSelectedRoom(room);
+              setIsConfirming(false);
+              setConfirmedRoom(null);
+              toast.success(`Ruangan ${room.name} ditemukan dari QR Link!`);
+            }, 1000);
             return;
           }
         }
@@ -152,7 +172,24 @@ const ScanPage = () => {
           </p>
         </div>
 
-        {!selectedRoom ? (
+        {isConfirming && confirmedRoom && (
+          <div className="glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center animate-fade-in border-primary/30 relative overflow-hidden">
+            <div className="absolute inset-0 bg-primary/5 animate-pulse" />
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <ScanBarcode className="w-8 h-8 text-primary animate-bounce" />
+              </div>
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">Barcode Terdeteksi</h2>
+              <p className="text-2xl font-bold text-foreground mb-4">{confirmedRoom.name}</p>
+              <div className="flex items-center gap-2 text-primary font-medium animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <span>Mengarahkan ke input data...</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!selectedRoom && !isConfirming ? (
           <div className="space-y-6">
             {/* Mode Toggle */}
             <div className="flex gap-2 p-1 bg-secondary rounded-lg">

@@ -161,10 +161,11 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               variant="default"
               size="sm"
               onClick={downloadPDF}
-              className="flex-1 sm:flex-none gap-2 shadow-button"
+              className="flex-1 sm:flex-none gap-2 shadow-button bg-primary hover:bg-primary/90"
+              title="Unduh laporan grafik dalam format PDF"
             >
               <FileText className="w-4 h-4" />
-              Unduh PDF (Grafik)
+              <span>Cetak Laporan (PDF)</span>
             </Button>
           </div>
         )}
@@ -179,28 +180,31 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
             />
             <XAxis
               dataKey="time"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12, fontWeight: 'bold' }}
               stroke="hsl(var(--muted-foreground))"
               tickLine={false}
               axisLine={false}
+              label={{ value: 'Waktu', position: 'insideBottom', offset: -5, style: { fontSize: '14px', fontWeight: 'bold' } }}
             />
             <YAxis
               yAxisId="temp"
               orientation="left"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12, fontWeight: 'bold' }}
               stroke="hsl(var(--muted-foreground))"
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}°C`}
+              label={{ value: 'Suhu (°C)', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: '14px', fontWeight: 'bold' } }}
             />
             <YAxis
               yAxisId="humidity"
               orientation="right"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 12, fontWeight: 'bold' }}
               stroke="hsl(var(--muted-foreground))"
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}%`}
+              label={{ value: 'Kelembaban (%)', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '14px', fontWeight: 'bold' } }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
@@ -216,18 +220,18 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               type="monotone"
               dataKey="temperature"
               stroke="hsl(var(--chart-temperature))"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
+              strokeWidth={3}
+              dot={{ stroke: 'hsl(var(--chart-temperature))', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
             />
             <Line
               yAxisId="humidity"
               type="monotone"
               dataKey="humidity"
               stroke="hsl(var(--chart-humidity))"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 0 }}
+              strokeWidth={3}
+              dot={{ stroke: 'hsl(var(--chart-humidity))', strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, strokeWidth: 2 }}
             />
           </LineChart>
         </ResponsiveContainer>

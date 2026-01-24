@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, StopCircle, AlertCircle } from 'lucide-react';
+import { Camera, StopCircle, AlertCircle, Zap, ZapOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BarcodeScannerProps {
@@ -11,7 +11,45 @@ interface BarcodeScannerProps {
 export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const beepRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Hidden audio element for beep
+    const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFRm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YV9vT18AAAAA"); // Very short beep placeholder, or better use a synthesized one
+    // Synthesizing a beep
+    const oscillator = (context: AudioContext) => {
+      const g = context.createGain();
+      const o = context.createOscillator();
+      o.connect(g);
+      g.connect(context.destination);
+      o.start(0);
+      g.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + 0.1);
+      o.stop(context.currentTime + 0.1);
+    };
+    (window as any).playScanBeep = () => {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        const context = new AudioContext();
+        oscillator(context);
+      } catch (e) {
+        console.warn("Audio feedback failed", e);
+      }
+    };
+  }, []);
+
+  const playSuccessFeedback = () => {
+    // Haptic feedback
+    if ('vibrate' in navigator) {
+      navigator.vibrate(100);
+    }
+    // Audio feedback
+    if ((window as any).playScanBeep) {
+      (window as any).playScanBeep();
+    }
+  };
 
   const startScanning = async () => {
     setError(null);
@@ -52,13 +90,20 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
           aspectRatio: 1.0,
         },
         (decodedText) => {
+          playSuccessFeedback();
           onScan(decodedText);
           stopScanning();
         },
         () => {
           // QR code not detected, keep scanning
         }
-      );
+      ).then(() => {
+        // Check if torch is supported
+        const state = scanner.getRunningTrackCapabilities();
+        if (state && (state as any).torch) {
+          setHasTorch(true);
+        }
+      });
     } catch (err: any) {
       console.error("Scanner Error:", err);
       let errorMessage = 'Gagal mengakses kamera.';
@@ -83,6 +128,20 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
     }
   };
 
+  const toggleTorch = async () => {
+    if (scannerRef.current && hasTorch) {
+      try {
+        const newTorchState = !isTorchOn;
+        await (scannerRef.current as any).applyVideoConstraints({
+          advanced: [{ torch: newTorchState }]
+        });
+        setIsTorchOn(newTorchState);
+      } catch (err) {
+        console.error('Error toggling torch:', err);
+      }
+    }
+  };
+
   const stopScanning = async () => {
     if (scannerRef.current) {
       try {
@@ -90,6 +149,8 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
           await scannerRef.current.stop();
         }
         setIsScanning(false);
+        setIsTorchOn(false);
+        setHasTorch(false);
         scannerRef.current = null;
       } catch (err) {
         console.error('Error stopping scanner:', err);
@@ -134,10 +195,10 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
 
       <div
         id="barcode-reader"
-        className={`relative overflow-hidden rounded-xl bg-secondary/50 transition-all duration-300 ${isScanning ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
+        className={`relative overflow-hidden rounded-xl bg-secondary/50 transition-all duration-300 ${isScanning || error ? 'min-h-[300px]' : 'min-h-[200px] flex items-center justify-center'
           }`}
       >
-        {!isScanning && (
+        {!isScanning && !error && (
           <div className="text-center p-8 animate-fade-in">
             <Camera className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-50" />
             <p className="text-muted-foreground text-sm">
@@ -145,14 +206,55 @@ export function BarcodeScanner({ onScan, onError }: BarcodeScannerProps) {
             </p>
           </div>
         )}
-      </div>
 
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-status-critical-bg text-status-critical text-sm animate-slide-up">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center animate-fade-in bg-status-critical-bg/20 backdrop-blur-[2px]">
+            <div className="bg-white/90 dark:bg-black/40 p-6 rounded-2xl shadow-lg border border-status-critical/20 max-w-[280px]">
+              <AlertCircle className="w-10 h-10 mx-auto text-status-critical mb-4" />
+              <h3 className="font-semibold text-status-critical mb-2">Akses Kamera Gagal</h3>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                {error}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startScanning}
+                className="w-full border-status-critical/30 hover:bg-status-critical/10"
+              >
+                Coba Lagi
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {isScanning && !error && (
+          <>
+            {/* Scanning Laser Animation */}
+            <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+              <div className="w-full h-[2px] bg-primary/60 shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-[scan-line_2s_ease-in-out_infinite]" />
+              {/* Viewfinder corners */}
+              <div className="absolute w-[70%] h-[70%] border-2 border-primary/20 rounded-lg">
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-md" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-md" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-md" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-md" />
+              </div>
+            </div>
+
+            {/* Torch Toggle Button */}
+            {hasTorch && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-4 right-4 z-20 rounded-full bg-black/40 hover:bg-black/60 text-white border-none backdrop-blur-md"
+                onClick={toggleTorch}
+              >
+                {isTorchOn ? <ZapOff className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
 
       <Button
         onClick={isScanning ? stopScanning : startScanning}

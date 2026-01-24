@@ -47,8 +47,10 @@
     --status-critical-bg: 0 72% 95%;
 
     /* Chart Colors */
-    --chart-temperature: 195 85% 45%;
-    --chart-humidity: 152 69% 45%;
+    --chart-temperature: 24 95% 53%;
+    /* Orange-red for heat/temp */
+    --chart-humidity: 199 89% 48%;
+    /* Bright blue for water/humidity */
     --chart-grid: 210 20% 92%;
 
     /* Gradients */
@@ -107,8 +109,8 @@
     --status-critical: 0 72% 55%;
     --status-critical-bg: 0 40% 15%;
 
-    --chart-temperature: 195 80% 55%;
-    --chart-humidity: 152 69% 55%;
+    --chart-temperature: 24 95% 60%;
+    --chart-humidity: 199 89% 55%;
     --chart-grid: 215 20% 22%;
 
     --gradient-primary: linear-gradient(135deg, hsl(195 80% 45%) 0%, hsl(195 70% 55%) 100%);
@@ -157,20 +159,17 @@
   }
 
   .status-badge-normal {
-    @apply text-xs font-medium px-2.5 py-1 rounded-full;
-    background-color: hsl(var(--status-normal-bg));
+    @apply text-xs font-medium px-2.5 py-1 rounded-full border border-status-normal/20 bg-status-normal-bg/40 backdrop-blur-sm;
     color: hsl(var(--status-normal));
   }
 
   .status-badge-warning {
-    @apply text-xs font-medium px-2.5 py-1 rounded-full;
-    background-color: hsl(var(--status-warning-bg));
+    @apply text-xs font-medium px-2.5 py-1 rounded-full border border-status-warning/20 bg-status-warning-bg/40 backdrop-blur-sm;
     color: hsl(var(--status-warning));
   }
 
   .status-badge-critical {
-    @apply text-xs font-medium px-2.5 py-1 rounded-full;
-    background-color: hsl(var(--status-critical-bg));
+    @apply text-xs font-medium px-2.5 py-1 rounded-full border border-status-critical/20 bg-status-critical-bg/40 backdrop-blur-sm;
     color: hsl(var(--status-critical));
   }
 
@@ -216,6 +215,27 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes scan-line {
+
+    0%,
+    100% {
+      transform: translateY(-130px);
+      opacity: 0;
+    }
+
+    10% {
+      opacity: 1;
+    }
+
+    50% {
+      transform: translateY(130px);
+    }
+
+    90% {
+      opacity: 1;
     }
   }
 }
