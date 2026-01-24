@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Download, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
@@ -36,15 +36,19 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
   const chartRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
+  const hasHumidity = useMemo(() => {
+    return data.some(log => log.humidity !== undefined && log.humidity !== null);
+  }, [data]);
+
   const chartData = useMemo(() => {
     return data.map((log) => ({
       time: format(log.recordedAt, 'dd/MM HH:mm', { locale: id }),
       temperature: log.temperature,
       humidity: log.humidity,
+      name: log.roomName,
       fullTime: format(log.recordedAt, 'dd MMM yyyy, HH:mm', { locale: id }),
     }));
   }, [data]);
-
 
   const downloadPDF = async () => {
     if (!chartRef.current || data.length === 0) {
@@ -85,7 +89,7 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
       pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
 
       // Add Data Table
-      const tableTop = imgHeight + 55;
+      const tableTop = imgHeight > pageHeight - 100 ? pageHeight - 50 : imgHeight + 55;
       pdf.setFontSize(12);
       pdf.setTextColor(33, 33, 33);
       pdf.text('Detail Data Sensor:', 15, tableTop);
@@ -98,21 +102,24 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
       pdf.setFillColor(240, 240, 240);
       pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
       pdf.text('Waktu', 20, y);
-      pdf.text('Ruangan', 70, y);
+      pdf.text('Asset', 70, y);
       pdf.text('Suhu', 130, y);
-      pdf.text('Kelembaban', 170, y);
+      if (hasHumidity) {
+        pdf.text('Kelembaban', 170, y);
+      }
 
       y += 8;
 
-      // Show only last 20 records in table to avoid page overflow for now
       const displayData = [...data].slice(-20).reverse();
 
       displayData.forEach((log) => {
-        if (y > pageHeight - 20) return; // Basic overflow check
+        if (y > pageHeight - 20) return;
         pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm'), 20, y);
         pdf.text(log.roomName || '-', 70, y);
         pdf.text(`${log.temperature}°C`, 130, y);
-        pdf.text(log.humidity !== undefined ? `${log.humidity}%` : '-', 170, y);
+        if (hasHumidity) {
+          pdf.text(log.humidity !== undefined ? `${log.humidity}%` : '-', 170, y);
+        }
         y += 6;
       });
 
@@ -126,24 +133,30 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
     }
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="chart-tooltip">
-          <p className="text-sm font-medium text-foreground mb-2">
-            {payload[0]?.payload?.fullTime}
-          </p>
-          <div className="space-y-1">
-            <p className="text-sm flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-chart-temperature" />
-              <span className="text-muted-foreground">Suhu:</span>
-              <span className="font-mono font-medium">{payload[0]?.value}°C</span>
+          <div className="mb-2">
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider">{data.name}</p>
+            <p className="text-sm font-medium text-foreground">{data.fullTime}</p>
+          </div>
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            <p className="text-sm flex items-center justify-between gap-4">
+              <span className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-chart-temperature" />
+                <span className="text-muted-foreground">Suhu:</span>
+              </span>
+              <span className="font-mono font-bold text-foreground">{payload[0]?.value}°C</span>
             </p>
-            {payload[1]?.value !== undefined && (
-              <p className="text-sm flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-chart-humidity" />
-                <span className="text-muted-foreground">Kelembaban:</span>
-                <span className="font-mono font-medium">{payload[1]?.value}%</span>
+            {hasHumidity && payload[1]?.value !== undefined && (
+              <p className="text-sm flex items-center justify-between gap-4">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-chart-humidity" />
+                  <span className="text-muted-foreground">Lembab:</span>
+                </span>
+                <span className="font-mono font-bold text-foreground">{payload[1]?.value}%</span>
               </p>
             )}
           </div>
@@ -167,53 +180,61 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               title="Unduh laporan grafik dalam format PDF"
             >
               <FileText className="w-4 h-4" />
-              <span>Cetak Laporan (PDF)</span>
+              <span>Cetak Laporan</span>
             </Button>
           </div>
         )}
       </div>
-      <div className="h-[300px]">
+      <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: hasHumidity ? 20 : 5, left: 10, bottom: 20 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="hsl(var(--chart-grid))"
               vertical={false}
+              opacity={0.5}
             />
             <XAxis
               dataKey="time"
-              tick={{ fontSize: 12, fontWeight: 'bold' }}
+              tick={{ fontSize: 10 }}
               stroke="hsl(var(--muted-foreground))"
               tickLine={false}
               axisLine={false}
-              label={{ value: 'Waktu', position: 'insideBottom', offset: -5, style: { fontSize: '14px', fontWeight: 'bold' } }}
+              dy={10}
             />
             <YAxis
               yAxisId="temp"
               orientation="left"
-              tick={{ fontSize: 12, fontWeight: 'bold' }}
+              tick={{ fontSize: 11, fontWeight: 'medium' }}
               stroke="hsl(var(--muted-foreground))"
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `${value}°C`}
-              label={{ value: 'Suhu (°C)', angle: -90, position: 'insideLeft', offset: 10, style: { fontSize: '14px', fontWeight: 'bold' } }}
+              domain={['auto', 'auto']}
+              dx={-5}
             />
-            <YAxis
-              yAxisId="humidity"
-              orientation="right"
-              tick={{ fontSize: 12, fontWeight: 'bold' }}
-              stroke="hsl(var(--muted-foreground))"
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `${value}%`}
-              label={{ value: 'Kelembaban (%)', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '14px', fontWeight: 'bold' } }}
-            />
-            <Tooltip content={<CustomTooltip />} />
+            {hasHumidity && (
+              <YAxis
+                yAxisId="humidity"
+                orientation="right"
+                tick={{ fontSize: 11, fontWeight: 'medium' }}
+                stroke="hsl(var(--muted-foreground))"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}%`}
+                domain={[0, 100]}
+                dx={5}
+              />
+            )}
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '4 4' }} />
             <Legend
-              wrapperStyle={{ paddingTop: '20px' }}
+              verticalAlign="top"
+              align="right"
+              iconType="circle"
+              wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }}
               formatter={(value) => (
-                <span className="text-sm text-foreground">
-                  {value === 'temperature' ? 'Suhu (°C)' : 'Kelembaban (%)'}
+                <span className="text-muted-foreground ml-1">
+                  {value === 'temperature' ? 'Suhu' : 'Kelembaban'}
                 </span>
               )}
             />
@@ -221,25 +242,29 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               yAxisId="temp"
               type="monotone"
               dataKey="temperature"
+              name="temperature"
               stroke="hsl(var(--chart-temperature))"
-              strokeWidth={3}
-              dot={{ stroke: 'hsl(var(--chart-temperature))', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, strokeWidth: 2 }}
+              strokeWidth={2.5}
+              dot={{ stroke: 'hsl(var(--chart-temperature))', strokeWidth: 2, r: 3, fill: 'hsl(var(--background))' }}
+              activeDot={{ r: 5, strokeWidth: 0, fill: 'hsl(var(--chart-temperature))' }}
+              animationDuration={1000}
             />
-            <Line
-              yAxisId="humidity"
-              type="monotone"
-              dataKey="humidity"
-              stroke="hsl(var(--chart-humidity))"
-              strokeWidth={3}
-              dot={{ stroke: 'hsl(var(--chart-humidity))', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, strokeWidth: 2 }}
-            />
+            {hasHumidity && (
+              <Line
+                yAxisId="humidity"
+                type="monotone"
+                dataKey="humidity"
+                name="humidity"
+                stroke="hsl(var(--chart-humidity))"
+                strokeWidth={2.5}
+                dot={{ stroke: 'hsl(var(--chart-humidity))', strokeWidth: 2, r: 3, fill: 'hsl(var(--background))' }}
+                activeDot={{ r: 5, strokeWidth: 0, fill: 'hsl(var(--chart-humidity))' }}
+                animationDuration={1000}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 }
-
-

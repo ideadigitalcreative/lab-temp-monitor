@@ -29,7 +29,28 @@ export interface EquipmentWithLatestReading extends Equipment {
 }
 
 // Get equipment temperature status
-export const getEquipmentStatus = (temp: number): 'normal' | 'warning' | 'critical' => {
+export const getEquipmentStatus = (temp: number, name?: string): 'normal' | 'warning' | 'critical' => {
+    const nameLower = (name || '').toLowerCase();
+
+    // Smart threshold based on equipment name
+    if (nameLower.includes('freezer')) {
+        if (temp < -25 || temp > -15) return 'critical';
+        if (temp < -22 || temp > -18) return 'warning';
+        return 'normal';
+    }
+
+    if (nameLower.includes('refrigerator') || nameLower.includes('kulkas')) {
+        if (temp < 0 || temp > 10) return 'critical';
+        if (temp < 2 || temp > 8) return 'warning';
+        return 'normal';
+    }
+
+    if (nameLower.includes('inkubator')) {
+        if (temp < 30 || temp > 45) return 'critical';
+        if (temp < 35 || temp > 39) return 'warning';
+        return 'normal';
+    }
+
     // Default/Standard thresholds for equipment
     if (temp < 15 || temp > 30) return 'critical';
     if (temp < 18 || temp > 26) return 'warning';
@@ -157,7 +178,7 @@ export function useEquipmentWithLatestReadings() {
     const equipmentWithReadings: EquipmentWithLatestReading[] = (equipment || []).map((item) => {
         const latestLog = latestLogs?.find((log) => log.equipment_id === item.id);
         const status = latestLog
-            ? getEquipmentStatus(latestLog.temperature)
+            ? getEquipmentStatus(latestLog.temperature, item.name)
             : 'normal';
 
         return {
