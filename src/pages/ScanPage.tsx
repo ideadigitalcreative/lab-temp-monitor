@@ -241,7 +241,7 @@ const ScanPage = () => {
           </p>
         </div>
 
-        {isConfirming && confirmedAsset && (
+        {isConfirming && confirmedAsset ? (
           <div className="glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center animate-fade-in border-primary/30 relative overflow-hidden">
             <div className="absolute inset-0 bg-primary/5 animate-pulse" />
             <div className="relative z-10">
@@ -262,9 +262,7 @@ const ScanPage = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {!selectedRoom && !selectedEquipment && !isConfirming ? (
+        ) : !selectedRoom && !selectedEquipment ? (
           <div className="space-y-6">
             {/* Mode Toggle */}
             <div className="flex gap-2 p-1 bg-secondary rounded-lg">
