@@ -15,12 +15,12 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/reports', label: 'Laporan', icon: FileText },
     { href: '/scan', label: 'Input Data', icon: ScanBarcode },
   ];
 
   if (profile?.role === 'admin') {
     navLinks.push(
+      { href: '/reports', label: 'Laporan', icon: FileText },
       { href: '/admin/rooms', label: 'Rooms', icon: DoorOpen },
       { href: '/admin/equipment', label: 'Equipment', icon: Box },
       { href: '/admin/users', label: 'Users', icon: Users }
@@ -122,7 +122,15 @@ export function Header() {
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-white hover:bg-destructive transition-all"
-                onClick={signOut}
+                onClick={async () => {
+                  try {
+                    await signOut();
+                    // Optional: Force reload to clear potential stale states
+                    // window.location.href = '/auth'; 
+                  } catch (error) {
+                    console.error("Logout failed", error);
+                  }
+                }}
                 title="Keluar"
               >
                 <LogOut className="w-4 h-4 mr-2" />

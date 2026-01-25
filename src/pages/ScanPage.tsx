@@ -108,7 +108,23 @@ const ScanPage = () => {
   const handleBarcodeScan = (barcode: string) => {
     setScanError(null);
 
-    // Check if the scanned barcode is a URL from our system
+    // 1. Check direct match in loaded rooms
+    const directRoom = rooms?.find(r => r.barcode === barcode);
+    if (directRoom) {
+      setSelectedRoom(directRoom);
+      toast.success(`Ruangan ${directRoom.name} dipilih!`);
+      return;
+    }
+
+    // 2. Check direct match in loaded equipment
+    const directEquip = equipment?.find(e => e.barcode === barcode);
+    if (directEquip) {
+      setSelectedEquipment(directEquip);
+      toast.success(`Alat ${directEquip.name} dipilih!`);
+      return;
+    }
+
+    // 3. Check if the scanned barcode is a URL from our system
     if (barcode.includes('roomId=')) {
       try {
         const url = new URL(barcode);
@@ -116,14 +132,8 @@ const ScanPage = () => {
         if (roomId) {
           const room = rooms?.find(r => r.id === roomId);
           if (room) {
-            setConfirmedAsset({ type: 'room', data: room });
-            setIsConfirming(true);
-            setTimeout(() => {
-              setSelectedRoom(room);
-              setIsConfirming(false);
-              setConfirmedAsset(null);
-              toast.success(`Ruangan ${room.name} ditemukan dari QR Link!`);
-            }, 1000);
+            setSelectedRoom(room);
+            toast.success(`Ruangan ${room.name} ditemukan dari QR Link!`);
             return;
           }
         }
@@ -139,14 +149,8 @@ const ScanPage = () => {
         if (equipId) {
           const equip = equipment?.find(e => e.id === equipId);
           if (equip) {
-            setConfirmedAsset({ type: 'equipment', data: equip });
-            setIsConfirming(true);
-            setTimeout(() => {
-              setSelectedEquipment(equip);
-              setIsConfirming(false);
-              setConfirmedAsset(null);
-              toast.success(`Alat ${equip.name} ditemukan dari QR Link!`);
-            }, 1000);
+            setSelectedEquipment(equip);
+            toast.success(`Alat ${equip.name} ditemukan dari QR Link!`);
             return;
           }
         }

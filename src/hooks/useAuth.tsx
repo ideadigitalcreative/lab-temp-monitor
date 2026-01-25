@@ -59,7 +59,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Use 'local' scope to avoid server request that may fail with 403
+      // This clears the session from the browser only
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      // Force clear local state regardless of server response
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+
+      // Clear Supabase storage (v2 uses this pattern: sb-<project-ref>-auth-token)
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
   };
 
   return (
