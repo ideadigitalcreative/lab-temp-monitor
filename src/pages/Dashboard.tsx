@@ -180,6 +180,7 @@ const Dashboard = () => {
                 {chartData.length > 0 ? (
                   <TemperatureChart
                     data={chartData.slice(-50)}
+                    sourceData={chartData}
                     title={
                       selectedRoom
                         ? `Grafik ${rooms?.find((r) => r.id === selectedRoom)?.name}`
@@ -243,6 +244,7 @@ const Dashboard = () => {
                 {equipmentChartData.length > 0 ? (
                   <TemperatureChart
                     data={equipmentChartData.slice(-50)}
+                    sourceData={equipmentChartData}
                     title={
                       selectedEquipment
                         ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name}`

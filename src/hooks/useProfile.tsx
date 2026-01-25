@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 export interface Profile {
     id: string;
     email: string;
+    full_name?: string;
     role: 'admin' | 'user';
     created_at: string;
 }
@@ -109,6 +110,33 @@ export function useUpdateUserRole() {
 //
 // BUT, I'll add `useDeleteUser` if needed, although usually deleting from `auth.users` requires admin API.
 // Deleting from `public.profiles` is possible via RLS.
+// Update user profile (name)
+export function useUpdateUserProfile() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ id, full_name }: { id: string; full_name: string }) => {
+            const { data, error } = await supabase
+                .from('profiles')
+                .update({ full_name })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            queryClient.invalidateQueries({ queryKey: ['profiles'] });
+            import('sonner').then(({ toast }) => toast.success('User profile updated successfully'));
+        },
+        onError: (error: any) => {
+            import('sonner').then(({ toast }) => toast.error(`Failed to update profile: ${error.message}`));
+        }
+    });
+}
+
 export function useDeleteUser() {
     const queryClient = useQueryClient();
 

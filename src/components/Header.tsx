@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize, Box } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize, Box, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,7 @@ export function Header() {
 
   const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/reports', label: 'Laporan', icon: FileText },
     { href: '/scan', label: 'Input Data', icon: ScanBarcode },
   ];
 

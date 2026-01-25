@@ -13,6 +13,7 @@ import EquipmentManagement from "./pages/admin/EquipmentManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import { AdminRoute } from "./components/AdminRoute";
 import { MobileScanFAB } from "./components/MobileScanFAB";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/reports" element={<Reports />} />
             <Route path="/scan" element={<ScanPage />} />
             <Route path="/auth" element={<Auth />} />
 

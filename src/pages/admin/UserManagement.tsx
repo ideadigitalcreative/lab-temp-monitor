@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Trash2, UserPlus, Shield, ShieldOff, Loader2 } from 'lucide-react';
+import { Trash2, UserPlus, Shield, ShieldOff, Loader2, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 
 import {
@@ -33,7 +33,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useUsers, useUpdateUserRole, useDeleteUser } from '@/hooks/useProfile';
+import { useUsers, useUpdateUserRole, useDeleteUser, useUpdateUserProfile, Profile } from '@/hooks/useProfile';
 
 export default function UserManagement() {
     const [newUserEmail, setNewUserEmail] = useState('');
@@ -43,7 +43,12 @@ export default function UserManagement() {
 
     const { data: profiles, isLoading } = useUsers();
     const updateRole = useUpdateUserRole();
+    const updateProfile = useUpdateUserProfile();
     const deleteUser = useDeleteUser();
+
+    // Edit State
+    const [editingUser, setEditingUser] = useState<Profile | null>(null);
+    const [editName, setEditName] = useState('');
 
     // Create User (Sign Up)
     const handleCreateUser = async () => {
@@ -53,7 +58,7 @@ export default function UserManagement() {
                 password: newUserPassword,
                 options: {
                     data: {
-                        full_name: newUserEmail.split('@')[0],
+                        full_name: newUserEmail.split('@')[0], // Default name from email
                     }
                 }
             });
@@ -73,6 +78,20 @@ export default function UserManagement() {
         if (confirm(`Are you sure you want to delete user ${email}?`)) {
             deleteUser.mutate(id);
         }
+    };
+
+    const handleUpdateProfile = () => {
+        if (!editingUser) return;
+
+        updateProfile.mutate({
+            id: editingUser.id,
+            full_name: editName
+        }, {
+            onSuccess: () => {
+                setEditingUser(null);
+                setEditName('');
+            }
+        });
     };
 
     return (
@@ -141,6 +160,7 @@ export default function UserManagement() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead>Full Name</TableHead>
                                     <TableHead>Email</TableHead>
                                     <TableHead>Role</TableHead>
                                     <TableHead>Joined Date</TableHead>
@@ -150,6 +170,7 @@ export default function UserManagement() {
                             <TableBody>
                                 {profiles?.map((profile) => (
                                     <TableRow key={profile.id}>
+                                        <TableCell>{profile.full_name || '-'}</TableCell>
                                         <TableCell className="font-medium">{profile.email}</TableCell>
                                         <TableCell>
                                             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${profile.role === 'admin'
@@ -164,6 +185,17 @@ export default function UserManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        setEditingUser(profile);
+                                                        setEditName(profile.full_name || '');
+                                                    }}
+                                                    className="text-muted-foreground hover:text-primary"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
                                                 <Select
                                                     defaultValue={profile.role}
                                                     onValueChange={(value) => updateRole.mutate({ id: profile.id, role: value as 'admin' | 'user' })}
@@ -194,6 +226,37 @@ export default function UserManagement() {
                         </Table>
                     )}
                 </div>
+
+                {/* Edit User Dialog */}
+                <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit User Profile</DialogTitle>
+                            <DialogDescription>
+                                Update user information for {editingUser?.email}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-name" className="text-right">
+                                    Full Name
+                                </Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="col-span-3"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handleUpdateProfile} disabled={updateProfile.isPending}>
+                                {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </main>
         </div>
     );

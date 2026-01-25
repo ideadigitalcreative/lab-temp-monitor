@@ -12,11 +12,12 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { FileText } from 'lucide-react';
+import { FileText, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 
 interface TemperatureLog {
@@ -30,10 +31,11 @@ interface TemperatureLog {
 
 interface TemperatureChartProps {
   data: TemperatureLog[];
+  sourceData?: TemperatureLog[];
   title?: string;
 }
 
-export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureChartProps) {
+export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: TemperatureChartProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
@@ -50,6 +52,48 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
       fullTime: format(log.recordedAt, 'dd MMM yyyy, HH:mm', { locale: id }),
     }));
   }, [data]);
+
+  const downloadExcel = () => {
+    const logsToExport = sourceData || data;
+
+    if (logsToExport.length === 0) {
+      toast.error('Tidak ada data untuk diekspor');
+      return;
+    }
+
+    const toastId = toast.loading('Sedang menyiapkan file Excel...');
+
+    try {
+      const exportData = [...logsToExport].reverse().map((log) => ({
+        Waktu: format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }),
+        Asset: log.roomName || '-',
+        'Suhu (°C)': log.temperature,
+        ...(hasHumidity ? { 'Kelembaban (%)': log.humidity ?? '-' } : {}),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data Sensor");
+
+      // Auto-width columns
+      const wscols = [
+        { wch: 20 }, // Waktu
+        { wch: 30 }, // Asset
+        { wch: 15 }, // Suhu
+        { wch: 15 }, // Kelembaban
+      ];
+      ws['!cols'] = wscols;
+
+      XLSX.writeFile(wb, `Laporan_Data_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+
+      toast.dismiss(toastId);
+      toast.success('File Excel berhasil diunduh');
+    } catch (error) {
+      console.error('Excel error:', error);
+      toast.dismiss(toastId);
+      toast.error('Gagal membuat file Excel');
+    }
+  };
 
   const downloadPDF = async () => {
     if (!chartRef.current || data.length === 0) {
@@ -174,6 +218,16 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
         {user && (
           <div className="flex gap-2 w-full sm:w-auto" data-html2canvas-ignore>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadExcel}
+              className="flex-1 sm:flex-none gap-2"
+              title="Unduh data dalam format Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Excel</span>
+            </Button>
+            <Button
               variant="default"
               size="sm"
               onClick={downloadPDF}
@@ -181,7 +235,7 @@ export function TemperatureChart({ data, title = 'Grafik Suhu' }: TemperatureCha
               title="Unduh laporan grafik dalam format PDF"
             >
               <FileText className="w-4 h-4" />
-              <span>Cetak Laporan</span>
+              <span>PDF</span>
             </Button>
           </div>
         )}
