@@ -26,6 +26,7 @@ import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon, FileText, X, C
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, Room, useTemperatureLogs, useUpdateTemperatureLog, useDeleteTemperatureLog, TemperatureLog } from '@/hooks/useRooms';
 import { format } from 'date-fns';
 import QRCode from 'react-qr-code';
+import RLSDebugger from '@/components/RLSDebugger';
 
 export default function RoomManagement() {
     const { data: rooms, isLoading } = useRooms();
@@ -128,8 +129,12 @@ export default function RoomManagement() {
                     />
                 </div>
 
+
+
+                <RLSDebugger />
+
                 {/* Room List */}
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="bg-card rounded-xl border border-border overflow-hidden mt-6">
                     {isLoading ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -245,7 +250,7 @@ export default function RoomManagement() {
                 </DialogContent>
             </Dialog >
             {/* QR Code Dialog */}
-            <Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen}>
+            < Dialog open={isQRDialogOpen} onOpenChange={setIsQRDialogOpen} >
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>QR Code for {selectedRoomForQR?.name}</DialogTitle>
@@ -345,7 +350,7 @@ export default function RoomManagement() {
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Temperature Logs Management Dialog */}
             < TemperatureLogsDialog
