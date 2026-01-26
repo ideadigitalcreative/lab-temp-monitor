@@ -290,7 +290,7 @@ export function useDeleteRoom() {
         throw error;
       }
 
-      console.log("Delete room response data:", data);
+
 
       if (!data || data.length === 0) {
         console.error("Delete room returned no data. Check RLS policies or if ID exists.");

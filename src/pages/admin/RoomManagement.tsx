@@ -26,7 +26,7 @@ import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon, FileText, X, C
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, Room, useTemperatureLogs, useUpdateTemperatureLog, useDeleteTemperatureLog, TemperatureLog } from '@/hooks/useRooms';
 import { format } from 'date-fns';
 import QRCode from 'react-qr-code';
-import RLSDebugger from '@/components/RLSDebugger';
+
 
 export default function RoomManagement() {
     const { data: rooms, isLoading } = useRooms();
@@ -131,7 +131,7 @@ export default function RoomManagement() {
 
 
 
-                <RLSDebugger />
+
 
                 {/* Room List */}
                 <div className="bg-card rounded-xl border border-border overflow-hidden mt-6">

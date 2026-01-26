@@ -296,7 +296,7 @@ export function useDeleteEquipment() {
                 throw error;
             }
 
-            console.log("Delete equipment response data:", data);
+
 
             if (!data || data.length === 0) {
                 console.error("Delete equipment returned no data. Check RLS policies or if ID exists.");
