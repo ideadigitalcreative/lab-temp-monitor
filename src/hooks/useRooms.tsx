@@ -270,12 +270,43 @@ export function useDeleteRoom() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      // First delete all related temperature logs
+      const { error: logsError } = await supabase
+        .from('temperature_logs')
+        .delete()
+        .eq('room_id', id);
+
+      if (logsError) throw logsError;
+
+      // Then delete the room
+      const { error, data } = await supabase
         .from('rooms')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase delete room error:", error);
+        throw error;
+      }
+
+      console.log("Delete room response data:", data);
+
+      if (!data || data.length === 0) {
+        console.error("Delete room returned no data. Check RLS policies or if ID exists.");
+        throw new Error('Room could not be deleted. It may not exist or permission is denied.');
+      }
+
+      // DEBUG: Verify deletion
+      const { data: checkData } = await supabase
+        .from('rooms')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (checkData) {
+        throw new Error('CRITICAL: Deletion appeared successful but record still exists in DB. Check Database Triggers or RLS.');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });

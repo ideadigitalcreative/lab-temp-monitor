@@ -17,6 +17,7 @@ import {
     DialogTitle,
     DialogFooter,
     DialogClose,
+    DialogDescription,
 } from '@/components/ui/dialog';
 import {
     Select,
@@ -111,7 +112,8 @@ export default function EquipmentManagement() {
                 await deleteEquipment.mutateAsync(item.id);
                 toast.success('Equipment deleted successfully');
             } catch (error: any) {
-                toast.error('Failed to delete equipment');
+                console.error("Delete failed:", error);
+                toast.error(error.message || 'Failed to delete equipment');
             }
         }
     };
@@ -212,6 +214,9 @@ export default function EquipmentManagement() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingEquip ? 'Edit Equipment' : 'Add New Equipment'}</DialogTitle>
+                        <div className="hidden">
+                            <DialogDescription>Form to {editingEquip ? 'edit' : 'add'} equipment</DialogDescription>
+                        </div>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
@@ -407,6 +412,9 @@ function EquipmentLogsDialog({ equipment, open, onOpenChange }: { equipment: Equ
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Temperature Data: {equipment?.name}</DialogTitle>
+                    <div className="hidden">
+                        <DialogDescription>Temperature log history for {equipment?.name}</DialogDescription>
+                    </div>
                 </DialogHeader>
 
                 <div className="mt-4">

@@ -276,12 +276,43 @@ export function useDeleteEquipment() {
 
     return useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
+            // First delete all related temperature logs
+            const { error: logsError } = await supabase
+                .from('equipment_temperature_logs')
+                .delete()
+                .eq('equipment_id', id);
+
+            if (logsError) throw logsError;
+
+            // Then delete the equipment
+            const { error, data } = await supabase
                 .from('equipment')
                 .delete()
-                .eq('id', id);
+                .eq('id', id)
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase delete equipment error:", error);
+                throw error;
+            }
+
+            console.log("Delete equipment response data:", data);
+
+            if (!data || data.length === 0) {
+                console.error("Delete equipment returned no data. Check RLS policies or if ID exists.");
+                throw new Error('Equipment could not be deleted. It may not exist or permission is denied.');
+            }
+
+            // DEBUG: Verify deletion
+            const { data: checkData } = await supabase
+                .from('equipment')
+                .select('id')
+                .eq('id', id)
+                .maybeSingle();
+
+            if (checkData) {
+                throw new Error('CRITICAL: Deletion appeared successful but record still exists in DB. Check Database Triggers or RLS.');
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['equipment'] });

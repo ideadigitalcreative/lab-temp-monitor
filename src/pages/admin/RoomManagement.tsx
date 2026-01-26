@@ -18,6 +18,7 @@ import {
     DialogTrigger,
     DialogFooter,
     DialogClose,
+    DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -91,10 +92,12 @@ export default function RoomManagement() {
     const handleDelete = async (room: Room) => {
         if (confirm(`Are you sure you want to delete ${room.name}? This will also delete all temperature logs for this room.`)) {
             try {
+                // First delete related logs is handled in the hook now
                 await deleteRoom.mutateAsync(room.id);
                 toast.success('Room deleted successfully');
             } catch (error: any) {
-                toast.error('Failed to delete room');
+                console.error("Delete failed:", error);
+                toast.error(error.message || 'Failed to delete room');
             }
         }
     };
@@ -195,6 +198,9 @@ export default function RoomManagement() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{editingRoom ? 'Edit Room' : 'Add New Room'}</DialogTitle>
+                        <div className="hidden">
+                            <DialogDescription>Form to {editingRoom ? 'edit' : 'add'} a room</DialogDescription>
+                        </div>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
@@ -400,6 +406,9 @@ function TemperatureLogsDialog({ room, open, onOpenChange }: { room: Room | null
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Temperature Data: {room?.name}</DialogTitle>
+                    <div className="hidden">
+                        <DialogDescription>Temperature log history for {room?.name}</DialogDescription>
+                    </div>
                 </DialogHeader>
 
                 <div className="mt-4">
