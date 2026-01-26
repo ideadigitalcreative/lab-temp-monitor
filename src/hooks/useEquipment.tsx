@@ -348,12 +348,16 @@ export function useDeleteEquipmentTemperatureLog() {
 
     return useMutation({
         mutationFn: async (id: string) => {
-            const { error } = await supabase
+            const { error, count } = await supabase
                 .from('equipment_temperature_logs')
-                .delete()
+                .delete({ count: 'exact' })
                 .eq('id', id);
 
             if (error) throw error;
+
+            if (count === 0) {
+                throw new Error("Failed to delete log: Record not found or permission denied.");
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['equipment_temperature_logs'] });
