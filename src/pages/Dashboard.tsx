@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   Loader2,
   Box,
+  ClipboardCheck,
 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
@@ -59,7 +60,7 @@ const Dashboard = () => {
 
   const stats = useMemo(() => {
     const latestRooms = roomsWithReadings.filter((r) => r.latestReading);
-    const latestEquip = equipmentWithReadings.filter((e) => e.latestReading);
+    const latestEquip = equipmentWithReadings.filter((e) => e.latestReading && e.type === 'temperature');
 
     const temps = [
       ...latestRooms.map((r) => r.latestReading!.temperature),
@@ -70,7 +71,7 @@ const Dashboard = () => {
 
     const warnings =
       roomsWithReadings.filter((r) => r.status === 'warning' || r.status === 'critical').length +
-      equipmentWithReadings.filter((e) => e.status === 'warning' || e.status === 'critical').length +
+      equipmentWithReadings.filter((e) => e.type === 'temperature' && (e.status === 'warning' || e.status === 'critical')).length +
       inspectionWarnings;
 
     return {
@@ -86,9 +87,15 @@ const Dashboard = () => {
     ? roomsWithReadings.filter((r) => r.id === selectedRoom)
     : roomsWithReadings;
 
-  const displayedEquipment = selectedEquipment
-    ? equipmentWithReadings.filter((e) => e.id === selectedEquipment)
-    : equipmentWithReadings;
+  const tempEquipment = useMemo(() => {
+    const base = equipmentWithReadings.filter(e => e.type === 'temperature');
+    return selectedEquipment ? base.filter(e => e.id === selectedEquipment) : base;
+  }, [equipmentWithReadings, selectedEquipment]);
+
+  const inspectionEquipment = useMemo(() => {
+    const base = equipmentWithReadings.filter(e => e.type === 'inspection');
+    return selectedEquipment ? base.filter(e => e.id === selectedEquipment) : base;
+  }, [equipmentWithReadings, selectedEquipment]);
 
   const chartData = useMemo(() => {
     return (temperatureLogs || []).map((log) => ({
@@ -157,16 +164,24 @@ const Dashboard = () => {
               />
             </div>
 
-            <Tabs defaultValue="rooms" className="w-full space-y-6" onValueChange={(v) => setActiveTab(v as any)}>
+            <Tabs defaultValue="rooms" className="w-full space-y-6" onValueChange={(v) => {
+              setActiveTab(v as any);
+              setSelectedEquipment(null);
+              setSelectedRoom(null);
+            }}>
               <div className="flex justify-center">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsList className="grid w-full max-w-2xl grid-cols-3">
                   <TabsTrigger value="rooms" className="gap-2">
                     <Building2 className="w-4 h-4" />
-                    Ruangan
+                    <span className="hidden sm:inline">Monitoring</span> Ruangan
                   </TabsTrigger>
-                  <TabsTrigger value="equipment" className="gap-2">
-                    <Box className="w-4 h-4" />
-                    Alat
+                  <TabsTrigger value="equipment_temp" className="gap-2">
+                    <Thermometer className="w-4 h-4" />
+                    Suhu Alat
+                  </TabsTrigger>
+                  <TabsTrigger value="equipment_inspection" className="gap-2">
+                    <ClipboardCheck className="w-4 h-4" />
+                    Pemeriksaan <span className="hidden sm:inline">Fisik</span>
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -246,19 +261,19 @@ const Dashboard = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="equipment" className="space-y-8 animate-fade-in">
+              <TabsContent value="equipment_temp" className="space-y-8 animate-fade-in">
                 {/* Section Title */}
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600">
-                    <Box className="w-5 h-5" />
+                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                    <Thermometer className="w-5 h-5" />
                   </div>
-                  <h2 className="text-xl font-bold">Monitoring Peralatan</h2>
+                  <h2 className="text-xl font-bold">Monitoring Suhu Peralatan</h2>
                 </div>
 
                 {/* Filters */}
                 <div className="glass-card rounded-xl p-4">
                   <RoomFilter
-                    rooms={equipment?.map(e => ({ ...e, location: e.location })) || []}
+                    rooms={equipment?.filter(e => e.type === 'temperature').map(e => ({ ...e, location: e.location })) || []}
                     selectedRoom={selectedEquipment}
                     dateRange={dateRange}
                     onRoomChange={setSelectedEquipment}
@@ -286,10 +301,40 @@ const Dashboard = () => {
                   )}
                 </div>
 
+                {/* List Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Alat Suhu</h3>
+                  {tempEquipment.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {tempEquipment.map((item) => (
+                        <EquipmentCard
+                          key={item.id}
+                          equipment={item as any}
+                          onClick={() => setSelectedEquipment(item.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada alat suhu ditemukan
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="equipment_inspection" className="space-y-8 animate-fade-in">
+                {/* Section Title */}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+                    <ClipboardCheck className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold">Pemeriksaan Kondisi Alat</h2>
+                </div>
+
                 {/* Inspection Analysis Section */}
                 {!selectedEquipment && equipmentInspection && equipmentInspection.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Analisis Kondisi Fisik</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Analisis Kelayakan</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <InspectionSummaryChart
                         data={equipmentInspection}
@@ -297,32 +342,31 @@ const Dashboard = () => {
                       />
                       <div className="md:col-span-2 glass-card rounded-xl p-8 flex flex-col justify-center">
                         <div className="mb-4">
-                          <h4 className="text-lg font-bold mb-2">Kesehatan Aset Laboratorium</h4>
+                          <h4 className="text-lg font-bold mb-2">Statistik Pemeriksaan Fisik</h4>
                           <p className="text-muted-foreground text-sm leading-relaxed">
-                            Ringkasan ini memantau kelayakan fisik peralatan berdasarkan pemeriksaan berkala (Bagus vs Tidak Bagus).
-                            Alat dengan status <strong>"Belum Diperiksa"</strong> memerlukan atensi segera untuk memastikan fungsi teknis yang optimal.
+                            Ringkasan ini memantau kelayakan fisik peralatan seperti BSC, LAF, dan Centrifuge berdasarkan pemeriksaan berkala (Bagus vs Tidak Bagus).
                           </p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/5 border border-green-500/10">
                             <div className="w-3 h-3 rounded-full bg-[#10b981]" />
                             <div className="flex flex-col">
                               <span className="text-xs font-bold">Bagus</span>
-                              <span className="text-[10px] text-muted-foreground">Berfungsi Normal</span>
+                              <span className="text-[10px] text-muted-foreground">Layak Pakai</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/10">
                             <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
                             <div className="flex flex-col">
                               <span className="text-xs font-bold">Tidak Bagus</span>
-                              <span className="text-[10px] text-muted-foreground">Perlu Perbaikan</span>
+                              <span className="text-[10px] text-muted-foreground">Perlu Atensi</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-500/5 border border-slate-500/10">
                             <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
                             <div className="flex flex-col">
                               <span className="text-xs font-bold">Belum Ada</span>
-                              <span className="text-[10px] text-muted-foreground">Belum Diperiksa</span>
+                              <span className="text-[10px] text-muted-foreground">Belum Update</span>
                             </div>
                           </div>
                         </div>
@@ -331,12 +375,12 @@ const Dashboard = () => {
                   </div>
                 )}
 
-                {/* Equipment List Section */}
+                {/* List Section */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Inventaris Alat</h3>
-                  {displayedEquipment.length > 0 ? (
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Alat Pemeriksaan</h3>
+                  {inspectionEquipment.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {displayedEquipment.map((item) => {
+                      {inspectionEquipment.map((item) => {
                         const inspectionInfo = equipmentInspection?.find(ei => ei.id === item.id);
                         return (
                           <EquipmentCard
@@ -352,7 +396,7 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
-                      Tidak ada alat ditemukan
+                      Tidak ada alat pemeriksaan ditemukan
                     </div>
                   )}
                 </div>
