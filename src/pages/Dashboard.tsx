@@ -170,16 +170,25 @@ const Dashboard = () => {
               setSelectedRoom(null);
             }}>
               <div className="flex justify-center">
-                <TabsList className="grid w-full max-w-2xl grid-cols-3">
-                  <TabsTrigger value="rooms" className="gap-2">
+                <TabsList className="grid w-full max-w-2xl grid-cols-3 bg-secondary/30 p-1 border border-border/50 rounded-xl backdrop-blur-sm h-12">
+                  <TabsTrigger
+                    value="rooms"
+                    className="gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-orange-500/30"
+                  >
                     <Building2 className="w-4 h-4" />
                     <span className="hidden sm:inline">Monitoring</span> Ruangan
                   </TabsTrigger>
-                  <TabsTrigger value="equipment_temp" className="gap-2">
+                  <TabsTrigger
+                    value="equipment_temp"
+                    className="gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/30"
+                  >
                     <Thermometer className="w-4 h-4" />
                     Suhu Alat
                   </TabsTrigger>
-                  <TabsTrigger value="equipment_inspection" className="gap-2">
+                  <TabsTrigger
+                    value="equipment_inspection"
+                    className="gap-2 rounded-lg transition-all duration-300 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-green-600/30"
+                  >
                     <ClipboardCheck className="w-4 h-4" />
                     Pemeriksaan <span className="hidden sm:inline">Fisik</span>
                   </TabsTrigger>
