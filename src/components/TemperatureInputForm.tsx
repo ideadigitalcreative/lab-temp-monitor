@@ -29,13 +29,14 @@ const temperatureSchema = z.object({
     .max(100, 'Kelembaban maksimal 100%')
     .optional()
     .or(z.literal('')),
+  recordedAt: z.string().optional(),
 });
 
 type TemperatureFormData = z.infer<typeof temperatureSchema>;
 
 interface TemperatureInputFormProps {
   room: Asset;
-  onSubmit: (data: TemperatureFormData) => void;
+  onSubmit: (data: TemperatureFormData & { customDate?: Date }) => void;
   onReset: () => void;
   isSubmitting?: boolean;
   showHumidity?: boolean;
@@ -49,22 +50,28 @@ export function TemperatureInputForm({
   showHumidity = true,
 }: TemperatureInputFormProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [useManualTime, setUseManualTime] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<TemperatureFormData>({
     resolver: zodResolver(temperatureSchema),
     defaultValues: {
       temperature: undefined,
       humidity: undefined,
+      recordedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     },
   });
 
+  const manualDate = watch('recordedAt');
+
   const handleFormSubmit = async (data: TemperatureFormData) => {
-    await onSubmit(data);
+    const customDate = useManualTime && data.recordedAt ? new Date(data.recordedAt) : undefined;
+    await onSubmit({ ...data, customDate });
     setSubmitted(true);
     setTimeout(() => {
       reset();
@@ -155,14 +162,43 @@ export function TemperatureInputForm({
         </div>
       </div>
 
-      {/* Timestamp */}
-      <div className="bg-secondary/50 rounded-lg p-3 text-center">
-        <p className="text-sm text-muted-foreground">
-          Waktu pencatatan:{' '}
-          <span className="font-medium text-foreground">
-            {format(new Date(), 'dd MMMM yyyy, HH:mm:ss', { locale: id })}
-          </span>
-        </p>
+      {/* Timestamp Selection */}
+      <div className="glass-card rounded-xl p-4 space-y-3 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="manual-time-toggle" className="text-sm font-medium cursor-pointer">
+            Gunakan Waktu Manual
+          </Label>
+          <input
+            id="manual-time-toggle"
+            type="checkbox"
+            className="w-4 h-4"
+            checked={useManualTime}
+            onChange={(e) => setUseManualTime(e.target.checked)}
+          />
+        </div>
+
+        {useManualTime ? (
+          <div className="space-y-2 animate-fade-in">
+            <Label htmlFor="recordedAt" className="text-xs text-muted-foreground">
+              Pilih Tanggal & Waktu
+            </Label>
+            <Input
+              id="recordedAt"
+              type="datetime-local"
+              className="font-mono"
+              {...register('recordedAt')}
+            />
+          </div>
+        ) : (
+          <div className="bg-secondary/30 rounded-lg p-3 text-center transition-all">
+            <p className="text-sm text-muted-foreground">
+              Waktu pencatatan (Otomatis):{' '}
+              <span className="font-medium text-foreground block mt-1">
+                {format(new Date(), 'dd MMMM yyyy, HH:mm', { locale: id })}
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

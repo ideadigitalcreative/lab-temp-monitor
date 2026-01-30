@@ -194,10 +194,12 @@ export function useAddTemperatureLog() {
       roomId,
       temperature,
       humidity,
+      recordedAt,
     }: {
       roomId: string;
       temperature: number;
       humidity: number;
+      recordedAt?: Date;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -208,7 +210,8 @@ export function useAddTemperatureLog() {
           room_id: roomId,
           temperature,
           humidity,
-          recorded_by: user.id
+          recorded_by: user.id,
+          recorded_at: recordedAt ? recordedAt.toISOString() : undefined
         })
         .select()
         .single();

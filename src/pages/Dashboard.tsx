@@ -15,6 +15,8 @@ import {
   useEquipmentWithLatestReadings,
   useEquipmentTemperatureLogs,
 } from '@/hooks/useEquipment';
+import { useAllEquipmentWithLatestInspection } from '@/hooks/useEquipmentInspection';
+import { InspectionSummaryChart } from '@/components/InspectionSummaryChart';
 import {
   Thermometer,
   Droplets,
@@ -51,6 +53,9 @@ const Dashboard = () => {
     dateRange?.from,
     dateRange?.to
   );
+  const { data: equipmentInspection, isLoading: equipmentInspectionLoading } = useAllEquipmentWithLatestInspection();
+
+  const isLoading = roomsLoading || readingsLoading || equipmentListLoading || equipmentReadingsLoading || equipmentInspectionLoading;
 
   const stats = useMemo(() => {
     const latestRooms = roomsWithReadings.filter((r) => r.latestReading);
@@ -61,18 +66,21 @@ const Dashboard = () => {
       ...latestEquip.map((e) => e.latestReading!.temperature)
     ];
 
+    const inspectionWarnings = equipmentInspection?.filter(ei => ei.latestInspection?.condition === 'tidak_bagus').length || 0;
+
     const warnings =
       roomsWithReadings.filter((r) => r.status === 'warning' || r.status === 'critical').length +
-      equipmentWithReadings.filter((e) => e.status === 'warning' || e.status === 'critical').length;
+      equipmentWithReadings.filter((e) => e.status === 'warning' || e.status === 'critical').length +
+      inspectionWarnings;
 
     return {
       avgTemp: temps.length
         ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)
         : '-',
-      totalAssets: roomsWithReadings.length + equipmentWithReadings.length,
+      totalAssets: roomsWithReadings.length + (equipment?.length || 0),
       warnings,
     };
-  }, [roomsWithReadings, equipmentWithReadings]);
+  }, [roomsWithReadings, equipmentWithReadings, equipmentInspection, equipment]);
 
   const displayedRooms = selectedRoom
     ? roomsWithReadings.filter((r) => r.id === selectedRoom)
@@ -103,7 +111,6 @@ const Dashboard = () => {
     }));
   }, [equipmentLogs]);
 
-  const isLoading = roomsLoading || readingsLoading || equipmentListLoading || equipmentReadingsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -257,18 +264,56 @@ const Dashboard = () => {
                   </div>
                 )}
 
+                {/* Inspection Summary Chart */}
+                {!selectedEquipment && equipmentInspection && equipmentInspection.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <InspectionSummaryChart
+                      data={equipmentInspection}
+                      className="md:col-span-1"
+                    />
+                    <div className="md:col-span-2 glass-card rounded-xl p-6 flex flex-col justify-center">
+                      <h3 className="text-lg font-semibold mb-2">Status Kelayakan Alat</h3>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        Grafik di samping menunjukkan persentase alat yang dalam kondisi layak (Bagus) berdasarkan pemeriksaan fisik terbaru.
+                        Pastikan seluruh alat diperiksa secara berkala untuk menjamin validitas hasil laboratorium.
+                      </p>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-[#10b981]" />
+                          <span className="text-xs font-medium">Bagus</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
+                          <span className="text-xs font-medium">Tidak Bagus</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
+                          <span className="text-xs font-medium">Belum Diperiksa</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Equipment Cards */}
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Daftar Alat</h2>
                   {displayedEquipment.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {displayedEquipment.map((item) => (
-                        <EquipmentCard
-                          key={item.id}
-                          equipment={item}
-                          onClick={() => setSelectedEquipment(item.id)}
-                        />
-                      ))}
+                      {displayedEquipment.map((item) => {
+                        // Find inspection data for this item if available
+                        const inspectionInfo = equipmentInspection?.find(ei => ei.id === item.id);
+                        return (
+                          <EquipmentCard
+                            key={item.id}
+                            equipment={{
+                              ...item,
+                              latestInspection: inspectionInfo?.latestInspection
+                            } as any}
+                            onClick={() => setSelectedEquipment(item.id)}
+                          />
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">

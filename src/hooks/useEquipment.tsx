@@ -7,6 +7,7 @@ export interface Equipment {
     name: string;
     location: string;
     barcode: string;
+    type: 'temperature' | 'inspection';
     created_at: string;
     updated_at: string;
 }
@@ -202,9 +203,11 @@ export function useAddEquipmentTemperatureLog() {
         mutationFn: async ({
             equipmentId,
             temperature,
+            recordedAt,
         }: {
             equipmentId: string;
             temperature: number;
+            recordedAt?: Date;
         }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('User not authenticated');
@@ -214,7 +217,8 @@ export function useAddEquipmentTemperatureLog() {
                 .insert({
                     equipment_id: equipmentId,
                     temperature,
-                    recorded_by: user.id
+                    recorded_by: user.id,
+                    recorded_at: recordedAt ? recordedAt.toISOString() : undefined
                 })
                 .select()
                 .single();
@@ -229,6 +233,8 @@ export function useAddEquipmentTemperatureLog() {
     });
 }
 
+
+
 // Equipment Management Mutations
 export function useCreateEquipment() {
     const queryClient = useQueryClient();
@@ -237,7 +243,10 @@ export function useCreateEquipment() {
         mutationFn: async (item: Omit<Equipment, 'id' | 'created_at' | 'updated_at'>) => {
             const { data, error } = await supabase
                 .from('equipment')
-                .insert(item)
+                .insert({
+                    ...item,
+                    type: item.type || 'temperature'
+                })
                 .select()
                 .single();
 

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { TemperatureInputForm } from '@/components/TemperatureInputForm';
+import { EquipmentInspectionForm } from '@/components/EquipmentInspectionForm';
 import { useRooms, useRoomByBarcode, useAddTemperatureLog, Room } from '@/hooks/useRooms';
 import {
   useEquipment,
@@ -10,8 +11,9 @@ import {
   useAddEquipmentTemperatureLog,
   Equipment
 } from '@/hooks/useEquipment';
+import { useAddEquipmentInspection, InspectionCondition } from '@/hooks/useEquipmentInspection';
 import { useAuth } from '@/hooks/useAuth';
-import { AlertCircle, ScanBarcode, Keyboard, LogIn, Box, Building2 } from 'lucide-react';
+import { AlertCircle, ScanBarcode, Keyboard, LogIn, Box, Building2, Thermometer, ClipboardCheck, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +35,8 @@ const ScanPage = () => {
   const [inputMode, setInputMode] = useState<'scan' | 'manual'>('scan');
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmedAsset, setConfirmedAsset] = useState<{ type: 'room' | 'equipment', data: Room | Equipment } | null>(null);
+  // Equipment input type: 'temperature' for temp input, 'inspection' for condition check
+  const [equipmentInputType, setEquipmentInputType] = useState<'temperature' | 'inspection' | null>(null);
 
   const [searchParams] = useSearchParams();
   const urlRoomId = searchParams.get('roomId');
@@ -47,6 +51,7 @@ const ScanPage = () => {
 
   const addTemperatureLog = useAddTemperatureLog();
   const addEquipmentLog = useAddEquipmentTemperatureLog();
+  const addEquipmentInspection = useAddEquipmentInspection();
 
   // Auto-select room from URL
   useEffect(() => {
@@ -104,6 +109,14 @@ const ScanPage = () => {
       toast.error('Barcode tidak dikenali');
     }
   }, [foundRoom, foundEquip, selectedRoom, selectedEquipment, searchBarcode, searchingRoom, searchingEquip, isConfirming]);
+
+  useEffect(() => {
+    if (selectedEquipment && !equipmentInputType) {
+      if (selectedEquipment.type === 'inspection') {
+        setEquipmentInputType('inspection');
+      }
+    }
+  }, [selectedEquipment, equipmentInputType]);
 
   const handleBarcodeScan = (barcode: string) => {
     setScanError(null);
@@ -174,17 +187,22 @@ const ScanPage = () => {
     const equip = equipment?.find((e) => e.id === equipId);
     if (equip) {
       setSelectedEquipment(equip);
+      // Auto-select type for inspections to skip selection screen
+      if (equip.type === 'inspection') {
+        setEquipmentInputType('inspection');
+      }
       toast.success(`Alat ${equip.name} dipilih!`);
     }
   };
 
-  const handleSubmitTemperature = async (data: { temperature: number; humidity: number }) => {
+  const handleSubmitTemperature = async (data: { temperature: number; humidity: number; customDate?: Date }) => {
     if (selectedRoom) {
       try {
         await addTemperatureLog.mutateAsync({
           roomId: selectedRoom.id,
           temperature: data.temperature,
           humidity: data.humidity,
+          recordedAt: data.customDate,
         });
         toast.success('Data berhasil disimpan!');
       } catch (error: any) {
@@ -195,10 +213,27 @@ const ScanPage = () => {
         await addEquipmentLog.mutateAsync({
           equipmentId: selectedEquipment.id,
           temperature: data.temperature,
+          recordedAt: data.customDate,
         });
         toast.success('Data alat berhasil disimpan!');
       } catch (error: any) {
         toast.error(error.message || 'Gagal menyimpan data alat');
+      }
+    }
+  };
+
+  const handleSubmitInspection = async (data: { condition: InspectionCondition; notes?: string; customDate?: Date }) => {
+    if (selectedEquipment) {
+      try {
+        await addEquipmentInspection.mutateAsync({
+          equipmentId: selectedEquipment.id,
+          condition: data.condition,
+          notes: data.notes,
+          inspectedAt: data.customDate,
+        });
+        toast.success('Pemeriksaan alat berhasil disimpan!');
+      } catch (error: any) {
+        toast.error(error.message || 'Gagal menyimpan pemeriksaan');
       }
     }
   };
@@ -208,6 +243,7 @@ const ScanPage = () => {
     setSelectedEquipment(null);
     setScanError(null);
     setSearchBarcode(null);
+    setEquipmentInputType(null);
   };
 
   // Show login prompt if not authenticated
@@ -399,16 +435,100 @@ const ScanPage = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : selectedRoom ? (
+          // Room selected - show temperature input directly
           <TemperatureInputForm
-            key={selectedRoom?.id || selectedEquipment?.id}
-            room={selectedRoom || selectedEquipment!}
+            key={selectedRoom.id}
+            room={selectedRoom}
             onSubmit={handleSubmitTemperature}
             onReset={handleReset}
-            isSubmitting={addTemperatureLog.isPending || addEquipmentLog.isPending}
-            showHumidity={!!selectedRoom}
+            isSubmitting={addTemperatureLog.isPending}
+            showHumidity={true}
           />
-        )}
+        ) : selectedEquipment && !equipmentInputType ? (
+          // Equipment selected but no input type chosen - show category selection
+          <div className="glass-card rounded-xl p-5 animate-slide-up">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleReset}
+                className="shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Box className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span className="text-sm text-muted-foreground truncate">
+                    Alat Terpilih
+                  </span>
+                </div>
+                <h2 className="text-lg font-semibold text-foreground truncate">
+                  {selectedEquipment.name}
+                </h2>
+                <p className="text-sm text-muted-foreground truncate">
+                  {selectedEquipment.location}
+                </p>
+              </div>
+            </div>
+
+            <h3 className="font-medium text-center mb-4">Pilih Jenis Input</h3>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Temperature Input Option */}
+              <button
+                onClick={() => setEquipmentInputType('temperature')}
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+              >
+                <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all">
+                  <Thermometer className="w-7 h-7 text-blue-600 dark:text-blue-400 group-hover:text-white" />
+                </div>
+                <span className="font-semibold text-foreground">
+                  Input Suhu
+                </span>
+                <span className="text-xs text-muted-foreground text-center">
+                  Catat temperatur alat
+                </span>
+              </button>
+
+              {/* Inspection Option */}
+              <button
+                onClick={() => setEquipmentInputType('inspection')}
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-border hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-all group"
+              >
+                <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center group-hover:bg-green-500 group-hover:text-white transition-all">
+                  <ClipboardCheck className="w-7 h-7 text-green-600 dark:text-green-400 group-hover:text-white" />
+                </div>
+                <span className="font-semibold text-foreground">
+                  Pemeriksaan
+                </span>
+                <span className="text-xs text-muted-foreground text-center">
+                  Cek kondisi alat
+                </span>
+              </button>
+            </div>
+          </div>
+        ) : selectedEquipment && equipmentInputType === 'temperature' ? (
+          // Equipment with temperature input selected
+          <TemperatureInputForm
+            key={selectedEquipment.id}
+            room={selectedEquipment}
+            onSubmit={handleSubmitTemperature}
+            onReset={handleReset}
+            isSubmitting={addEquipmentLog.isPending}
+            showHumidity={false}
+          />
+        ) : selectedEquipment && equipmentInputType === 'inspection' ? (
+          // Equipment with inspection input selected
+          <EquipmentInspectionForm
+            equipment={selectedEquipment}
+            onSubmit={handleSubmitInspection}
+            onReset={handleReset}
+            isSubmitting={addEquipmentInspection.isPending}
+          />
+        ) : null}
       </main>
     </div>
   );

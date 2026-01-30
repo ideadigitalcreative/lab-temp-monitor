@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon, FileText, X, Check, Box } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, QrCode as QrIcon, FileText, X, Check, Box, ClipboardCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
     useEquipment,
     useCreateEquipment,
@@ -41,10 +43,21 @@ import {
     EquipmentTemperatureLog,
     getEquipmentStatus
 } from '@/hooks/useEquipment';
+import {
+    useEquipmentInspections,
+    useUpdateEquipmentInspection,
+    useDeleteEquipmentInspection,
+    InspectionCondition,
+    EquipmentInspection,
+    getConditionInfo
+} from '@/hooks/useEquipmentInspection';
 import { format } from 'date-fns';
 import QRCode from 'react-qr-code';
 
 export default function EquipmentManagement() {
+    const [searchParams] = useSearchParams();
+    const typeFilter = (searchParams.get('type') as 'temperature' | 'inspection') || 'temperature';
+
     const { data: equipment, isLoading } = useEquipment();
     const createEquipment = useCreateEquipment();
     const updateEquipment = useUpdateEquipment();
@@ -54,7 +67,8 @@ export default function EquipmentManagement() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isQRDialogOpen, setIsQRDialogOpen] = useState(false);
     const [selectedEquipForQR, setSelectedEquipForQR] = useState<Equipment | null>(null);
-    const [viewingLogsEquip, setViewingLogsEquip] = useState<Equipment | null>(null);
+    const [viewingTempLogsEquip, setViewingTempLogsEquip] = useState<Equipment | null>(null);
+    const [viewingInspectionLogsEquip, setViewingInspectionLogsEquip] = useState<Equipment | null>(null);
     const [editingEquip, setEditingEquip] = useState<Equipment | null>(null);
 
     // Form state
@@ -62,17 +76,22 @@ export default function EquipmentManagement() {
         name: '',
         location: '',
         barcode: '',
+        type: typeFilter,
     });
 
-    const filteredEquip = equipment?.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.barcode.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredEquip = useMemo(() => {
+        return equipment?.filter(item => {
+            const matchesType = item.type === typeFilter;
+            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.barcode.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesType && matchesSearch;
+        });
+    }, [equipment, searchQuery, typeFilter]);
 
     const handleOpenCreate = () => {
         setEditingEquip(null);
-        setFormData({ name: '', location: '', barcode: '' });
+        setFormData({ name: '', location: '', barcode: '', type: typeFilter });
         setIsDialogOpen(true);
     };
 
@@ -82,6 +101,7 @@ export default function EquipmentManagement() {
             name: item.name,
             location: item.location,
             barcode: item.barcode,
+            type: item.type,
         });
         setIsDialogOpen(true);
     };
@@ -124,12 +144,18 @@ export default function EquipmentManagement() {
             <main className="container py-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold">Equipment Management</h1>
-                        <p className="text-muted-foreground">Add, edit, or remove laboratory equipment</p>
+                        <h1 className="text-3xl font-bold">
+                            {typeFilter === 'temperature' ? 'Equipment Management (Suhu)' : 'Alat Pemeriksaan'}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {typeFilter === 'temperature'
+                                ? 'Kelola alat yang dipantau suhu dan kelembabannya'
+                                : 'Kelola alat yang dilakukan pemeriksaan kondisi (Bagus/Tidak Bagus)'}
+                        </p>
                     </div>
                     <Button onClick={handleOpenCreate}>
                         <Plus className="mr-2 h-4 w-4" />
-                        Add New Equipment
+                        Tambah {typeFilter === 'temperature' ? 'Alat Suhu' : 'Alat Pemeriksaan'}
                     </Button>
                 </div>
 
@@ -137,7 +163,7 @@ export default function EquipmentManagement() {
                 <div className="relative mb-6">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search equipment..."
+                        placeholder={`Cari ${typeFilter === 'temperature' ? 'alat...' : 'pemeriksaan...'}`}
                         className="pl-10 max-w-sm"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -189,7 +215,16 @@ export default function EquipmentManagement() {
                                                         <QrIcon className="h-3 w-3 mr-2" />
                                                         QR Code
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => setViewingLogsEquip(item)} title="View Data">
+                                                    <Button variant="ghost" size="icon"
+                                                        onClick={() => {
+                                                            if (item.type === 'inspection') {
+                                                                setViewingInspectionLogsEquip(item);
+                                                            } else {
+                                                                setViewingTempLogsEquip(item);
+                                                            }
+                                                        }}
+                                                        title="Lihat Data"
+                                                    >
                                                         <FileText className="h-4 w-4 text-green-600" />
                                                     </Button>
                                                     <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(item)}>
@@ -356,13 +391,167 @@ export default function EquipmentManagement() {
                 </DialogContent>
             </Dialog>
 
-            {/* Equipment Logs Management Dialog */}
-            < EquipmentLogsDialog
-                equipment={viewingLogsEquip}
-                open={!!viewingLogsEquip}
-                onOpenChange={(open) => !open && setViewingLogsEquip(null)}
+            {/* Equipment Logs Management Dialogs */}
+            <EquipmentLogsDialog
+                equipment={viewingTempLogsEquip}
+                open={!!viewingTempLogsEquip}
+                onOpenChange={(open) => !open && setViewingTempLogsEquip(null)}
+            />
+            <EquipmentInspectionLogsDialog
+                equipment={viewingInspectionLogsEquip}
+                open={!!viewingInspectionLogsEquip}
+                onOpenChange={(open) => !open && setViewingInspectionLogsEquip(null)}
             />
         </div >
+    );
+}
+
+// ... EquipmentLogsDialog exists already ...
+
+function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equipment: Equipment | null, open: boolean, onOpenChange: (open: boolean) => void }) {
+    const { data: logs, isLoading } = useEquipmentInspections(equipment?.id);
+    const updateInspection = useUpdateEquipmentInspection();
+    const deleteInspection = useDeleteEquipmentInspection();
+
+    const [editingLogId, setEditingLogId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({ condition: 'bagus' as InspectionCondition, notes: '' });
+
+    const startEdit = (log: EquipmentInspection) => {
+        setEditingLogId(log.id);
+        setEditForm({ condition: log.condition, notes: log.notes || '' });
+    };
+
+    const cancelEdit = () => {
+        setEditingLogId(null);
+    };
+
+    const saveEdit = async (id: string) => {
+        try {
+            await updateInspection.mutateAsync({
+                id,
+                condition: editForm.condition,
+                notes: editForm.notes || null,
+            });
+            toast.success('Pemeriksaan diperbarui');
+            setEditingLogId(null);
+        } catch (e: any) {
+            toast.error('Gagal memperbarui');
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Hapus riwayat pemeriksaan ini?')) {
+            try {
+                await deleteInspection.mutateAsync(id);
+                toast.success('Riwayat dihapus');
+            } catch (e) {
+                toast.error('Gagal menghapus');
+            }
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Riwayat Pemeriksaan: {equipment?.name}</DialogTitle>
+                    <div className="hidden">
+                        <DialogDescription>History pemeriksaan kondisi untuk {equipment?.name}</DialogDescription>
+                    </div>
+                </DialogHeader>
+
+                <div className="mt-4">
+                    {isLoading ? (
+                        <div className="flex justify-center p-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Waktu</TableHead>
+                                    <TableHead>Kondisi</TableHead>
+                                    <TableHead>Catatan</TableHead>
+                                    <TableHead className="text-right">Aksi</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {logs?.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                                            Belum ada data pemeriksaan
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    logs?.map((log) => {
+                                        const config = getConditionInfo(log.condition);
+                                        return (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {format(new Date(log.inspected_at), 'PP p')}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {editingLogId === log.id ? (
+                                                        <Select
+                                                            value={editForm.condition}
+                                                            onValueChange={(v) => setEditForm({ ...editForm, condition: v as InspectionCondition })}
+                                                        >
+                                                            <SelectTrigger className="w-32 h-8">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="bagus">Bagus</SelectItem>
+                                                                <SelectItem value="tidak_bagus">Tidak Bagus</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    ) : (
+                                                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium", config.bgColor, config.color)}>
+                                                            {config.label}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {editingLogId === log.id ? (
+                                                        <Input
+                                                            value={editForm.notes}
+                                                            onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                                                            className="h-8 min-w-[200px]"
+                                                        />
+                                                    ) : (
+                                                        log.notes || '-'
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {editingLogId === log.id ? (
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button variant="ghost" size="icon" onClick={() => saveEdit(log.id)} className="h-8 w-8 text-green-600">
+                                                                <Check className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 text-gray-500">
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-end gap-1">
+                                                            <Button variant="ghost" size="icon" onClick={() => startEdit(log)} className="h-8 w-8 text-blue-500">
+                                                                <Pencil className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(log.id)} className="h-8 w-8 text-red-500">
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 

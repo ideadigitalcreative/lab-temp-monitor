@@ -170,6 +170,41 @@ export type Database = {
           },
         ]
       }
+      equipment_inspections: {
+        Row: {
+          id: string
+          equipment_id: string
+          condition: 'bagus' | 'tidak_bagus'
+          notes: string | null
+          inspected_by: string | null
+          inspected_at: string
+        }
+        Insert: {
+          id?: string
+          equipment_id: string
+          condition: 'bagus' | 'tidak_bagus'
+          notes?: string | null
+          inspected_by?: string | null
+          inspected_at?: string
+        }
+        Update: {
+          id?: string
+          equipment_id?: string
+          condition?: 'bagus' | 'tidak_bagus'
+          notes?: string | null
+          inspected_by?: string | null
+          inspected_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_inspections_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

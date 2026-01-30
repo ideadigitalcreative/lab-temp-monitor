@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize, Box, FileText } from 'lucide-react';
+import { Activity, ScanBarcode, LayoutDashboard, Users, DoorOpen, Download, LogOut, Maximize, Minimize, Box, FileText, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { usePWA } from '@/hooks/usePWA';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Header() {
   const location = useLocation();
@@ -20,12 +28,61 @@ export function Header() {
 
   if (profile?.role === 'admin') {
     navLinks.push(
-      { href: '/reports', label: 'Laporan', icon: FileText },
-      { href: '/admin/rooms', label: 'Rooms', icon: DoorOpen },
-      { href: '/admin/equipment', label: 'Equipment', icon: Box },
-      { href: '/admin/users', label: 'Users', icon: Users }
+      { href: '/reports', label: 'Laporan', icon: FileText }
     );
   }
+
+  // Master Menu dropdown for admins
+  const renderMasterMenu = () => {
+    if (profile?.role !== 'admin') return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary',
+              location.pathname.startsWith('/admin') && 'bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary'
+            )}
+          >
+            <Box className="w-4 h-4" />
+            <span className="hidden sm:inline">Master</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Data Master</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <Link to="/admin/rooms">
+            <DropdownMenuItem className="cursor-pointer gap-2">
+              <DoorOpen className="w-4 h-4" />
+              <span>Data Ruangan</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link to="/admin/equipment?type=temperature">
+            <DropdownMenuItem className="cursor-pointer gap-2">
+              <Box className="w-4 h-4" />
+              <span>Data Alat (Suhu)</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link to="/admin/equipment?type=inspection">
+            <DropdownMenuItem className="cursor-pointer gap-2">
+              <ClipboardCheck className="w-4 h-4" />
+              <span>Alat Pemeriksaan</span>
+            </DropdownMenuItem>
+          </Link>
+          <DropdownMenuSeparator />
+          <Link to="/admin/users">
+            <DropdownMenuItem className="cursor-pointer gap-2">
+              <Users className="w-4 h-4" />
+              <span>Manajemen User</span>
+            </DropdownMenuItem>
+          </Link>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -85,6 +142,8 @@ export function Header() {
               </Link>
             );
           })}
+
+          {renderMasterMenu()}
 
           <Button
             variant="ghost"
