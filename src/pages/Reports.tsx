@@ -220,20 +220,30 @@ export default function Reports() {
                     bottom: { style: 'thin' },
                     right: { style: 'thin' }
                 };
-                sheet.getCell(row + 1, 1).alignment = { vertical: 'top' };
+                sheet.getCell(row + 1, 1).alignment = { vertical: 'top', horizontal: 'left', indent: 1 };
+                sheet.getCell(row + 1, 1).value = '(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)';
+                sheet.getCell(row + 1, 1).font = { italic: true, size: 8, color: { argb: 'FF666666' } };
 
                 row += 6;
-                sheet.getCell(row, 1).value = 'Catatan :';
+                sheet.getCell(row, 1).value = 'Catatan / Keterangan :';
                 sheet.getCell(row, 1).font = { bold: true };
-                sheet.getCell(row + 1, 1).value = 'Batas Keberterimaan';
-                sheet.getCell(row + 2, 1).value = 'Temperatur: ±3°C';
+                sheet.getCell(row + 1, 1).value = '- Batas Keberterimaan Temperatur : ±3°C dari standar';
+                sheet.getCell(row + 2, 1).value = '- Batas Keberterimaan Kelembaban : 40% - 60% (untuk ruangan)';
+                sheet.getCell(row + 3, 1).value = '- Segera laporkan jika parameter berada di luar batas normal.';
 
-                row += 4;
+                row += 5;
                 // Final Metadata Box
                 const metaStartRow = row;
 
-                sheet.getCell(row, 1).value = 'Edisi / Revisi';
-                sheet.getCell(row, 2).value = ': IV / 0';
+                sheet.getCell(row, 1).value = 'Edisi';
+                sheet.getCell(row, 2).value = ': IV';
+                sheet.mergeCells(row, tableWidth - 1, row, tableWidth);
+                sheet.getCell(row, tableWidth - 1).value = 'Nomor Dokumen:';
+                sheet.getCell(row, tableWidth - 1).alignment = { horizontal: 'right' };
+
+                row++;
+                sheet.getCell(row, 1).value = 'Revisi';
+                sheet.getCell(row, 2).value = ': 0';
                 sheet.mergeCells(row, tableWidth - 1, row, tableWidth);
                 sheet.getCell(row, tableWidth - 1).value = 'F/BLKM-MKS/6.3/01/00/01';
                 sheet.getCell(row, tableWidth - 1).alignment = { horizontal: 'right' };
