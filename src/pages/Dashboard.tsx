@@ -171,7 +171,15 @@ const Dashboard = () => {
                 </TabsList>
               </div>
 
-              <TabsContent value="rooms" className="space-y-6 animate-fade-in">
+              <TabsContent value="rooms" className="space-y-8 animate-fade-in">
+                {/* Section Title */}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-orange-500/10 text-orange-600">
+                    <Thermometer className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold">Monitoring Ruangan</h2>
+                </div>
+
                 {/* Filters */}
                 <div className="glass-card rounded-xl p-4">
                   <RoomFilter
@@ -183,26 +191,29 @@ const Dashboard = () => {
                   />
                 </div>
 
-                {/* Chart */}
-                {chartData.length > 0 ? (
-                  <TemperatureChart
-                    data={chartData.slice(-50)}
-                    sourceData={chartData}
-                    title={
-                      selectedRoom
-                        ? `Grafik ${rooms?.find((r) => r.id === selectedRoom)?.name}`
-                        : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
-                    }
-                  />
-                ) : (
-                  <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
-                    <p>Belum ada data suhu untuk periode ini</p>
-                  </div>
-                )}
+                {/* Chart Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Grafik Tren Ruangan</h3>
+                  {chartData.length > 0 ? (
+                    <TemperatureChart
+                      data={chartData.slice(-50)}
+                      sourceData={chartData}
+                      title={
+                        selectedRoom
+                          ? `Visualisasi ${rooms?.find((r) => r.id === selectedRoom)?.name}`
+                          : 'Grafik Suhu & Kelembaban (Semua Ruangan)'
+                      }
+                    />
+                  ) : (
+                    <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                      <p>Belum ada data rekaman untuk periode ini</p>
+                    </div>
+                  )}
+                </div>
 
-                {/* Room Cards */}
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Daftar Ruangan</h2>
+                {/* Room Cards Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Kondisi Saat Ini</h3>
                   {displayedRooms.length > 0 ? (
                     <div
                       className={
@@ -235,7 +246,15 @@ const Dashboard = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="equipment" className="space-y-6 animate-fade-in">
+              <TabsContent value="equipment" className="space-y-8 animate-fade-in">
+                {/* Section Title */}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600">
+                    <Box className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold">Monitoring Peralatan</h2>
+                </div>
+
                 {/* Filters */}
                 <div className="glass-card rounded-xl p-4">
                   <RoomFilter
@@ -247,61 +266,77 @@ const Dashboard = () => {
                   />
                 </div>
 
-                {/* Chart */}
-                {equipmentChartData.length > 0 ? (
-                  <TemperatureChart
-                    data={equipmentChartData.slice(-50)}
-                    sourceData={equipmentChartData}
-                    title={
-                      selectedEquipment
-                        ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name}`
-                        : 'Grafik Suhu Alat (Semua Alat)'
-                    }
-                  />
-                ) : (
-                  <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
-                    <p>Belum ada data suhu alat untuk periode ini</p>
-                  </div>
-                )}
-
-                {/* Inspection Summary Chart */}
-                {!selectedEquipment && equipmentInspection && equipmentInspection.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <InspectionSummaryChart
-                      data={equipmentInspection}
-                      className="md:col-span-1"
+                {/* Temperature Chart Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Grafik Suhu Alat</h3>
+                  {equipmentChartData.length > 0 ? (
+                    <TemperatureChart
+                      data={equipmentChartData.slice(-50)}
+                      sourceData={equipmentChartData}
+                      title={
+                        selectedEquipment
+                          ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name}`
+                          : 'Grafik Suhu Alat (Semua Alat)'
+                      }
                     />
-                    <div className="md:col-span-2 glass-card rounded-xl p-6 flex flex-col justify-center">
-                      <h3 className="text-lg font-semibold mb-2">Status Kelayakan Alat</h3>
-                      <p className="text-muted-foreground text-sm mb-4">
-                        Grafik di samping menunjukkan persentase alat yang dalam kondisi layak (Bagus) berdasarkan pemeriksaan fisik terbaru.
-                        Pastikan seluruh alat diperiksa secara berkala untuk menjamin validitas hasil laboratorium.
-                      </p>
-                      <div className="flex gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-[#10b981]" />
-                          <span className="text-xs font-medium">Bagus</span>
+                  ) : (
+                    <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                      <p>Belum ada data suhu alat untuk periode ini</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Inspection Analysis Section */}
+                {!selectedEquipment && equipmentInspection && equipmentInspection.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Analisis Kondisi Fisik</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <InspectionSummaryChart
+                        data={equipmentInspection}
+                        className="md:col-span-1"
+                      />
+                      <div className="md:col-span-2 glass-card rounded-xl p-8 flex flex-col justify-center">
+                        <div className="mb-4">
+                          <h4 className="text-lg font-bold mb-2">Kesehatan Aset Laboratorium</h4>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
+                            Ringkasan ini memantau kelayakan fisik peralatan berdasarkan pemeriksaan berkala (Bagus vs Tidak Bagus).
+                            Alat dengan status <strong>"Belum Diperiksa"</strong> memerlukan atensi segera untuk memastikan fungsi teknis yang optimal.
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
-                          <span className="text-xs font-medium">Tidak Bagus</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
-                          <span className="text-xs font-medium">Belum Diperiksa</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                            <div className="w-3 h-3 rounded-full bg-[#10b981]" />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold">Bagus</span>
+                              <span className="text-[10px] text-muted-foreground">Berfungsi Normal</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                            <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold">Tidak Bagus</span>
+                              <span className="text-[10px] text-muted-foreground">Perlu Perbaikan</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                            <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold">Belum Ada</span>
+                              <span className="text-[10px] text-muted-foreground">Belum Diperiksa</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Equipment Cards */}
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Daftar Alat</h2>
+                {/* Equipment List Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Inventaris Alat</h3>
                   {displayedEquipment.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {displayedEquipment.map((item) => {
-                        // Find inspection data for this item if available
                         const inspectionInfo = equipmentInspection?.find(ei => ei.id === item.id);
                         return (
                           <EquipmentCard
