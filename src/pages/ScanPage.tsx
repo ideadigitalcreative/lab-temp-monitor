@@ -401,31 +401,62 @@ const ScanPage = () => {
             )}
 
             {/* Available Barcodes Info */}
-            <div className="bg-secondary/50 rounded-xl p-4">
-              <h4 className="font-medium text-sm mb-3">Kode Tersedia:</h4>
-              <div className="space-y-4">
+            <div className="bg-secondary/40 rounded-xl p-5 border border-border/50 backdrop-blur-sm">
+              <h4 className="font-bold text-sm mb-4 text-foreground/80 flex items-center gap-2">
+                <ScanBarcode className="w-4 h-4" />
+                Daftar Barcode Tersedia
+              </h4>
+              <div className="space-y-6">
+                {/* Rooms */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Ruangan:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]" />
+                    <p className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Ruangan Laboratorium</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-4">
                     {rooms?.map((room) => (
                       <button
                         key={room.id}
                         onClick={() => handleBarcodeScan(room.barcode)}
-                        className="text-xs font-mono px-2 py-1 rounded bg-background hover:bg-accent transition-colors"
+                        className="text-xs font-mono px-2.5 py-1.5 rounded-lg bg-background border border-border/50 hover:border-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-all shadow-sm"
                       >
                         {room.barcode}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Equipment Temperature */}
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Alat:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {equipment?.map((item) => (
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Alat (Pemantauan Suhu)</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-4">
+                    {equipment?.filter(e => e.type === 'temperature').map((item) => (
                       <button
                         key={item.id}
                         onClick={() => handleBarcodeScan(item.barcode)}
-                        className="text-xs font-mono px-2 py-1 rounded bg-background hover:bg-accent transition-colors"
+                        className="text-xs font-mono px-2.5 py-1.5 rounded-lg bg-background border border-border/50 hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all shadow-sm"
+                      >
+                        {item.barcode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Equipment Inspection */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <p className="text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Alat (Pemeriksaan Kondisi)</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-4">
+                    {equipment?.filter(e => e.type === 'inspection').map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleBarcodeScan(item.barcode)}
+                        className="text-xs font-mono px-2.5 py-1.5 rounded-lg bg-background border border-border/50 hover:border-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all shadow-sm"
                       >
                         {item.barcode}
                       </button>
