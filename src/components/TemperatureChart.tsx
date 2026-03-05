@@ -118,26 +118,59 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Add Title
-      pdf.setFontSize(18);
-      pdf.setTextColor(33, 33, 33);
-      pdf.text('Laporan Monitoring Laboratorium', 15, 20);
+      // Add Logo and Header (Consistent with Excel Reports)
+      try {
+        const response = await fetch('/Logo-Labkesmas-Makassar-I.png');
+        if (response.ok) {
+          const blob = await response.blob();
+          const logoData = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          pdf.addImage(logoData, 'PNG', 15, 8, 60, 15);
+        }
+      } catch (e) {
+        console.error('Failed to add logo to PDF', e);
+      }
 
+      // Header Text (Right Aligned - Consistent with Excel)
+      pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(`Judul: ${title}`, 15, 28);
-      pdf.text(`Tanggal Cetak: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, 15, 34);
+      pdf.text('LABORATORIUM PENGUJI', pageWidth - 15, 12, { align: 'right' });
+      pdf.setFontSize(10);
+      pdf.text('LABORATORIUM KESEHATAN MASYARAKAT', pageWidth - 15, 17, { align: 'right' });
+      pdf.setFontSize(11);
+      pdf.text('MAKASSAR II', pageWidth - 15, 22, { align: 'right' });
+
+      // Title Section
+      pdf.setDrawColor(37, 99, 235); // Primary Blue
+      pdf.setLineWidth(0.5);
+      pdf.line(15, 27, pageWidth - 15, 27);
+
+      pdf.setFontSize(16);
+      pdf.setTextColor(33, 33, 33);
+      pdf.text('Laporan Monitoring Parameter Laboratorium', pageWidth / 2, 38, { align: 'center' });
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(80, 80, 80);
+
+      const infoY = 46;
+      pdf.text(`Judul Grafik : ${title}`, 15, infoY);
+      pdf.text(`Waktu Cetak : ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, pageWidth - 15, infoY, { align: 'right' });
 
       // Add Chart Image
       const imgWidth = pageWidth - 30;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'PNG', 15, 58, imgWidth, imgHeight);
 
       // Add Data Table
-      const tableTop = imgHeight > pageHeight - 100 ? pageHeight - 50 : imgHeight + 55;
-      pdf.setFontSize(12);
+      const tableTop = 58 + imgHeight + 10;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
       pdf.setTextColor(33, 33, 33);
-      pdf.text('Detail Data Sensor:', 15, tableTop);
+      pdf.text('Log Data Sensor (20 Terakhir):', 15, tableTop);
 
       pdf.setFontSize(8);
       pdf.setTextColor(60, 60, 60);

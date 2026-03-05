@@ -21,7 +21,7 @@ interface Asset {
 const temperatureSchema = z.object({
   temperature: z.coerce
     .number({ required_error: 'Suhu wajib diisi', invalid_type_error: 'Suhu harus angka' })
-    .min(-50, 'Suhu minimal -50°C')
+    .min(-100, 'Suhu minimal -100°C')
     .max(100, 'Suhu maksimal 100°C'),
   humidity: z.coerce
     .number({ invalid_type_error: 'Kelembaban harus angka' })
