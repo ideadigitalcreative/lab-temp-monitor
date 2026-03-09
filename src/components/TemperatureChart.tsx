@@ -158,7 +158,6 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
 
       const infoY = 46;
       pdf.text(`Judul Grafik : ${title}`, 15, infoY);
-      pdf.text(`Waktu Cetak : ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}`, pageWidth - 15, infoY, { align: 'right' });
 
       // Add Chart Image
       const imgWidth = pageWidth - 30;
