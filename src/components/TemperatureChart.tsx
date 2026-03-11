@@ -169,29 +169,36 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
       pdf.setTextColor(33, 33, 33);
-      pdf.text('Log Data Sensor (20 Terakhir):', 15, tableTop);
+      pdf.text('Log Data Sensor:', 15, tableTop);
 
       pdf.setFontSize(8);
       pdf.setTextColor(60, 60, 60);
       let y = tableTop + 8;
 
-      // Header Table
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
-      pdf.text('Waktu', 20, y);
-      pdf.text('Asset', 70, y);
-      pdf.text('Suhu', 130, y);
-      if (hasHumidity) {
-        pdf.text('Kelembaban', 170, y);
-      }
+      const drawTableHeader = (startY: number) => {
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(15, startY - 4, pageWidth - 30, 6, 'F');
+        pdf.text('Waktu', 20, startY);
+        pdf.text('Asset', 70, startY);
+        pdf.text('Suhu', 130, startY);
+        if (hasHumidity) {
+          pdf.text('Kelembaban', 170, startY);
+        }
+        return startY + 8;
+      };
 
-      y += 8;
+      y = drawTableHeader(y);
 
-      const displayData = [...data].slice(-20).reverse();
+      const logsToExport = sourceData || data;
+      const displayData = [...logsToExport].reverse();
 
       displayData.forEach((log) => {
-        if (y > pageHeight - 20) return;
-        pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm'), 20, y);
+        if (y > pageHeight - 20) {
+          pdf.addPage();
+          y = 20;
+          y = drawTableHeader(y);
+        }
+        pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }), 20, y);
         pdf.text(log.roomName || '-', 70, y);
         pdf.text(`${log.temperature}°C`, 130, y);
         if (hasHumidity) {
@@ -199,6 +206,7 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
         }
         y += 6;
       });
+
 
       pdf.save(`Laporan_Grafik_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
       toast.dismiss(toastId);
