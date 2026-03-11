@@ -191,10 +191,12 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
 
       const logsToExport = sourceData || data;
       const displayData = [...logsToExport].reverse();
+      let totalPages = 1;
 
       displayData.forEach((log) => {
         if (y > pageHeight - 20) {
           pdf.addPage();
+          totalPages++;
           y = 20;
           y = drawTableHeader(y);
         }
@@ -207,6 +209,65 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
         y += 6;
       });
 
+      // Add Footer
+      if (y > pageHeight - 80) {
+        pdf.addPage();
+        totalPages++;
+        y = 20;
+      } else {
+        y += 10;
+      }
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(33, 33, 33);
+      pdf.text('Evaluasi :', 15, y);
+
+      y += 5;
+      pdf.setDrawColor(33, 33, 33);
+      pdf.setLineWidth(0.5);
+      pdf.rect(15, y, pageWidth - 30, 25, 'S');
+
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)', 17, y + 4);
+
+      y += 35;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(33, 33, 33);
+      pdf.text('Catatan / Keterangan :', 15, y);
+
+      y += 5;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.text('- Batas Keberterimaan Temperatur : ±3°C dari standar', 15, y);
+      y += 5;
+      pdf.text('- Batas Keberterimaan Kelembaban : 40% - 60% (untuk ruangan)', 15, y);
+      y += 5;
+      pdf.text('- Segera laporkan jika parameter berada di luar batas normal.', 15, y);
+
+      y += 15;
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(9);
+
+      pdf.text('Edisi', 15, y);
+      pdf.text(': IV', 45, y);
+      pdf.text('Nomor Dokumen:', pageWidth - 15, y, { align: 'right' });
+
+      y += 5;
+      pdf.text('Revisi', 15, y);
+      pdf.text(': 0', 45, y);
+      pdf.text('F/BLKM-MKS/6.3/01/00/01', pageWidth - 15, y, { align: 'right' });
+
+      y += 5;
+      pdf.text('Tanggal Berlaku', 15, y);
+      pdf.text(`: ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, 45, y);
+
+      y += 5;
+      pdf.text('Halaman', 15, y);
+      pdf.text(`: ${totalPages}/${totalPages}`, 45, y);
 
       pdf.save(`Laporan_Grafik_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
       toast.dismiss(toastId);
