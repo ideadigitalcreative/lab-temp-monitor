@@ -68,6 +68,9 @@ export function EquipmentTemperatureChart({
       row[slot].push(log.temperature);
     }
 
+    const round2 = (v: number | undefined) =>
+      v != null ? Number(Number(v).toFixed(2)) : undefined;
+
     return Array.from(byDate.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([dayKey, temps]) => {
@@ -78,9 +81,9 @@ export function EquipmentTemperatureChart({
           date: format(d, 'dd/MM', { locale: id }),
           dateLabel: format(d, 'd MMM', { locale: id }),
           fullDate: format(d, 'dd MMM yyyy', { locale: id }),
-          suhuPagi: avg(temps.pagi),
-          suhuSiang: avg(temps.siang),
-          suhuSore: avg(temps.sore),
+          suhuPagi: round2(avg(temps.pagi)),
+          suhuSiang: round2(avg(temps.siang)),
+          suhuSore: round2(avg(temps.sore)),
         };
       });
   }, [data]);
@@ -222,9 +225,17 @@ export function EquipmentTemperatureChart({
     }
   };
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value?: number; color: string; dataKey: string }> }) => {
+  type TooltipPayloadItem = {
+    name: string;
+    value?: number;
+    color: string;
+    dataKey: string;
+    payload?: { dateLabel: string; fullDate: string; suhuPagi?: number; suhuSiang?: number; suhuSore?: number };
+  };
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) => {
     if (!active || !payload?.length) return null;
-    const row = payload[0]?.payload as (typeof chartData)[0];
+    const row = payload[0]?.payload;
+    if (!row) return null;
     return (
       <div className="chart-tooltip rounded-lg border border-border/50 bg-background px-3 py-2 shadow-xl">
         <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
