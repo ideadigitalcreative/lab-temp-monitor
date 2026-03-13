@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { RoomCard } from '@/components/RoomCard';
 import { EquipmentCard } from '@/components/EquipmentCard';
 import { TemperatureChart } from '@/components/TemperatureChart';
+import { EquipmentTemperatureChart } from '@/components/EquipmentTemperatureChart';
 import { StatCard } from '@/components/StatCard';
 import { RoomFilter } from '@/components/RoomFilter';
 import {
@@ -14,8 +15,9 @@ import {
   useEquipment,
   useEquipmentWithLatestReadings,
   useEquipmentTemperatureLogs,
+  type EquipmentWithLatestReading,
 } from '@/hooks/useEquipment';
-import { useAllEquipmentWithLatestInspection } from '@/hooks/useEquipmentInspection';
+import { useAllEquipmentWithLatestInspection, type EquipmentInspection } from '@/hooks/useEquipmentInspection';
 import { InspectionSummaryChart } from '@/components/InspectionSummaryChart';
 import {
   Thermometer,
@@ -30,8 +32,10 @@ import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+type TabValue = 'rooms' | 'equipment_temp' | 'equipment_inspection';
+
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState<'rooms' | 'equipment'>('rooms');
+  const [activeTab, setActiveTab] = useState<TabValue>('rooms');
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -165,7 +169,7 @@ const Dashboard = () => {
             </div>
 
             <Tabs defaultValue="rooms" className="w-full space-y-6" onValueChange={(v) => {
-              setActiveTab(v as any);
+              setActiveTab(v as TabValue);
               setSelectedEquipment(null);
               setSelectedRoom(null);
             }}>
@@ -290,17 +294,17 @@ const Dashboard = () => {
                   />
                 </div>
 
-                {/* Temperature Chart Section */}
+                {/* Temperature Chart Section - 3 garis: Pagi, Siang, Sore */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Grafik Suhu Alat</h3>
                   {equipmentChartData.length > 0 ? (
-                    <TemperatureChart
-                      data={equipmentChartData.slice(-50)}
+                    <EquipmentTemperatureChart
+                      data={equipmentChartData}
                       sourceData={equipmentChartData}
                       title={
                         selectedEquipment
-                          ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name}`
-                          : 'Grafik Suhu Alat (Semua Alat)'
+                          ? `Grafik ${equipment?.find((e) => e.id === selectedEquipment)?.name} (Pagi / Siang / Sore)`
+                          : 'Grafik Suhu Alat'
                       }
                     />
                   ) : (
@@ -318,7 +322,7 @@ const Dashboard = () => {
                       {tempEquipment.map((item) => (
                         <EquipmentCard
                           key={item.id}
-                          equipment={item as any}
+                          equipment={item}
                           onClick={() => setSelectedEquipment(item.id)}
                         />
                       ))}
@@ -397,7 +401,7 @@ const Dashboard = () => {
                             equipment={{
                               ...item,
                               latestInspection: inspectionInfo?.latestInspection
-                            } as any}
+                            } as EquipmentWithLatestReading & { latestInspection?: EquipmentInspection }}
                             onClick={() => setSelectedEquipment(item.id)}
                           />
                         );
