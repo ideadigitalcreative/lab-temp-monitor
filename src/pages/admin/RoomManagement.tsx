@@ -454,7 +454,7 @@ function TemperatureLogsDialog({ room, open, onOpenChange }: { room: Room | null
                                                         className="w-24 h-8"
                                                     />
                                                 ) : (
-                                                    <span className={log.temperature > 25 || log.temperature < 18 ? 'text-red-500 font-bold' : ''}>
+                                                    <span className={log.temperature > 23 || log.temperature < 17 ? 'text-red-500 font-bold' : ''}>
                                                         {log.temperature}°C
                                                     </span>
                                                 )}

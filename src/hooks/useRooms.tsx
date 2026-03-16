@@ -45,9 +45,9 @@ export const getTemperatureStatus = (temp: number, roomName: string): 'normal' |
     if (temp < 36 || temp > 38) return 'warning';
     return 'normal';
   }
-  // Standard lab
-  if (temp < 15 || temp > 30) return 'critical';
-  if (temp < 18 || temp > 26) return 'warning';
+  // Standard lab (Ruangan Penyimpanan Spesimen)
+  if (temp < 15 || temp > 25) return 'critical';
+  if (temp < 17 || temp > 23) return 'warning';
   return 'normal';
 };
 

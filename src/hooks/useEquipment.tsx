@@ -57,8 +57,8 @@ export const getEquipmentStatus = (temp: number, name?: string): 'normal' | 'war
     }
 
     // Default/Standard thresholds for equipment
-    if (temp < 15 || temp > 30) return 'critical';
-    if (temp < 18 || temp > 26) return 'warning';
+    if (temp < 15 || temp > 25) return 'critical';
+    if (temp < 17 || temp > 23) return 'warning';
     return 'normal';
 };
 
