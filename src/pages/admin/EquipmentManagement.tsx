@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import {
     Table,
     TableBody,
@@ -460,7 +462,61 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                     </div>
                 </DialogHeader>
 
-                <div className="mt-4">
+                <div className="mt-4 space-y-6">
+                    {/* Summary Chart */}
+                    {!isLoading && logs && logs.length > 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center bg-secondary/20 p-4 rounded-xl">
+                            <div className="h-[180px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: 'Bagus', value: logs.filter(l => l.condition === 'bagus').length, color: '#10b981' },
+                                                { name: 'Layak Pakai', value: logs.filter(l => l.condition === 'layak_pakai').length, color: '#3b82f6' },
+                                                { name: 'Tidak Bagus', value: logs.filter(l => l.condition === 'tidak_bagus').length, color: '#ef4444' },
+                                                { name: 'Perlu Atensi', value: logs.filter(l => l.condition === 'perlu_atensi').length, color: '#f97316' },
+                                            ].filter(d => d.value > 0)}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={40}
+                                            outerRadius={70}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {logs && [
+                                                { name: 'Bagus', color: '#10b981' },
+                                                { name: 'Layak Pakai', color: '#3b82f6' },
+                                                { name: 'Tidak Bagus', color: '#ef4444' },
+                                                { name: 'Perlu Atensi', color: '#f97316' },
+                                            ].map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                                <h4 className="font-bold text-sm">Analisis Riwayat Kondisi</h4>
+                                <p className="text-xs text-muted-foreground">
+                                    Distribusi status fisik alat berdasarkan total {logs.length} kali pemeriksaan yang telah dilakukan.
+                                </p>
+                                <div className="flex flex-wrap gap-3 mt-2">
+                                    {[
+                                        { label: 'Bagus', color: 'bg-[#10b981]', count: logs.filter(l => l.condition === 'bagus').length },
+                                        { label: 'Layak Pakai', color: 'bg-[#3b82f6]', count: logs.filter(l => l.condition === 'layak_pakai').length },
+                                        { label: 'Tidak Bagus', color: 'bg-[#ef4444]', count: logs.filter(l => l.condition === 'tidak_bagus').length },
+                                        { label: 'Perlu Atensi', color: 'bg-[#f97316]', count: logs.filter(l => l.condition === 'perlu_atensi').length },
+                                    ].filter(s => s.count > 0).map(s => (
+                                        <div key={s.label} className="flex items-center gap-1.5">
+                                            <div className={cn("w-2 h-2 rounded-full", s.color)} />
+                                            <span className="text-[10px] font-medium">{s.label}: {s.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {isLoading ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -501,7 +557,9 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="bagus">Bagus</SelectItem>
+                                                                <SelectItem value="layak_pakai">Layak Pakai</SelectItem>
                                                                 <SelectItem value="tidak_bagus">Tidak Bagus</SelectItem>
+                                                                <SelectItem value="perlu_atensi">Perlu Atensi</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     ) : (
@@ -606,7 +664,40 @@ function EquipmentLogsDialog({ equipment, open, onOpenChange }: { equipment: Equ
                     </div>
                 </DialogHeader>
 
-                <div className="mt-4">
+                <div className="mt-4 space-y-6">
+                    {/* Temperature Chart */}
+                    {!isLoading && logs && logs.length > 0 && (
+                        <div className="h-[250px] w-full bg-blue-500/5 border border-blue-500/10 p-4 rounded-xl">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={[...logs].reverse().slice(-30)}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                    <XAxis 
+                                        dataKey="recorded_at" 
+                                        hide 
+                                    />
+                                    <YAxis 
+                                        domain={['auto', 'auto']}
+                                        tick={{ fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        labelFormatter={(value) => format(new Date(value), 'PPP p')}
+                                    />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="temperature" 
+                                        stroke="#3b82f6" 
+                                        strokeWidth={3}
+                                        dot={{ r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                                        activeDot={{ r: 6, strokeWidth: 0 }}
+                                        name="Suhu (°C)"
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
                     {isLoading ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />

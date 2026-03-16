@@ -174,7 +174,7 @@ export type Database = {
         Row: {
           id: string
           equipment_id: string
-          condition: 'bagus' | 'tidak_bagus'
+          condition: 'bagus' | 'tidak_bagus' | 'layak_pakai' | 'perlu_atensi'
           notes: string | null
           inspected_by: string | null
           inspected_at: string
@@ -182,7 +182,7 @@ export type Database = {
         Insert: {
           id?: string
           equipment_id: string
-          condition: 'bagus' | 'tidak_bagus'
+          condition: 'bagus' | 'tidak_bagus' | 'layak_pakai' | 'perlu_atensi'
           notes?: string | null
           inspected_by?: string | null
           inspected_at?: string
@@ -190,7 +190,7 @@ export type Database = {
         Update: {
           id?: string
           equipment_id?: string
-          condition?: 'bagus' | 'tidak_bagus'
+          condition?: 'bagus' | 'tidak_bagus' | 'layak_pakai' | 'perlu_atensi'
           notes?: string | null
           inspected_by?: string | null
           inspected_at?: string

@@ -251,11 +251,13 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       y += 5;
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
-      pdf.text('- Batas Keberterimaan Temperatur : ±3°C dari standar', 15, y);
+      pdf.text('- Batas Keberterimaan Temperatur : 20±3°C dari standar', 15, y);
       y += 5;
-      pdf.text('- Batas Keberterimaan Kelembaban : 40% - 60% (untuk ruangan)', 15, y);
+      pdf.text('- Batas Keberterimaan Kelembaban : 45% - 65% (Permen LHK Nomor 23 Tahun 2020)', 15, y);
       y += 5;
       pdf.text('- Segera laporkan jika parameter berada di luar batas normal.', 15, y);
+      y += 5;
+      pdf.text('- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian', 15, y);
 
       y += 15;
       pdf.setFont('helvetica', 'italic');

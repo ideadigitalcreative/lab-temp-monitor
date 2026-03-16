@@ -6,6 +6,8 @@ import { TemperatureChart } from '@/components/TemperatureChart';
 import { EquipmentTemperatureChart } from '@/components/EquipmentTemperatureChart';
 import { StatCard } from '@/components/StatCard';
 import { RoomFilter } from '@/components/RoomFilter';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
   useRooms,
   useRoomsWithLatestReadings,
@@ -17,7 +19,26 @@ import {
   useEquipmentTemperatureLogs,
   type EquipmentWithLatestReading,
 } from '@/hooks/useEquipment';
-import { useAllEquipmentWithLatestInspection, type EquipmentInspection } from '@/hooks/useEquipmentInspection';
+import { 
+  useAllEquipmentWithLatestInspection, 
+  useEquipmentInspections,
+  type EquipmentInspection,
+  getConditionInfo 
+} from '@/hooks/useEquipmentInspection';
+import { 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  Tooltip as RechartsTooltip, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  LineChart,
+  Line,
+  BarChart,
+  Bar 
+} from 'recharts';
 import { InspectionSummaryChart } from '@/components/InspectionSummaryChart';
 import {
   Thermometer,
@@ -27,7 +48,16 @@ import {
   Loader2,
   Box,
   ClipboardCheck,
+  FileText,
+  X,
+  User,
+  Clock,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { jsPDF } from 'jspdf';
+import { format } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,8 +89,22 @@ const Dashboard = () => {
     dateRange?.to
   );
   const { data: equipmentInspection, isLoading: equipmentInspectionLoading } = useAllEquipmentWithLatestInspection();
+  
+  // Detail Logs for selected equipment
+  const { data: singleEquipInspections, isLoading: singleEquipLoading } = useEquipmentInspections(
+    selectedEquipment || undefined,
+    dateRange?.from,
+    dateRange?.to
+  );
 
-  const isLoading = roomsLoading || readingsLoading || equipmentListLoading || equipmentReadingsLoading || equipmentInspectionLoading;
+  // All Inspections for history trend
+  const { data: allInspectionHistory, isLoading: allHistoryLoading } = useEquipmentInspections(
+    undefined,
+    dateRange?.from,
+    dateRange?.to
+  );
+
+  const isLoading = roomsLoading || readingsLoading || equipmentListLoading || equipmentReadingsLoading || equipmentInspectionLoading || allHistoryLoading || singleEquipLoading;
 
   const stats = useMemo(() => {
     const latestRooms = roomsWithReadings.filter((r) => r.latestReading);
@@ -100,6 +144,11 @@ const Dashboard = () => {
     const base = equipmentWithReadings.filter(e => e.type === 'inspection');
     return selectedEquipment ? base.filter(e => e.id === selectedEquipment) : base;
   }, [equipmentWithReadings, selectedEquipment]);
+
+  const selectedEquipInfo = useMemo(() => {
+    if (!selectedEquipment || !equipmentInspection) return null;
+    return (equipmentInspection as any[]).find(ei => ei.id === selectedEquipment);
+  }, [selectedEquipment, equipmentInspection]);
 
   const chartData = useMemo(() => {
     return (temperatureLogs || []).map((log) => ({
@@ -293,6 +342,8 @@ const Dashboard = () => {
                     dateRange={dateRange}
                     onRoomChange={setSelectedEquipment}
                     onDateRangeChange={setDateRange}
+                    searchPlaceholder="Cari alat..."
+                    selectPlaceholder="Pilih Alat"
                   />
                 </div>
 
@@ -321,81 +372,7 @@ const Dashboard = () => {
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Alat Suhu</h3>
                   {tempEquipment.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {tempEquipment.map((item) => (
-                        <EquipmentCard
-                          key={item.id}
-                          equipment={item}
-                          onClick={() => setSelectedEquipment(item.id)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Tidak ada alat suhu ditemukan
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="equipment_inspection" className="space-y-8 animate-fade-in">
-                {/* Section Title */}
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
-                    <ClipboardCheck className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl font-bold">Pemeriksaan Kondisi Alat</h2>
-                </div>
-
-                {/* Inspection Analysis Section */}
-                {!selectedEquipment && equipmentInspection && equipmentInspection.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Analisis Kelayakan</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <InspectionSummaryChart
-                        data={equipmentInspection}
-                        className="md:col-span-1"
-                      />
-                      <div className="md:col-span-2 glass-card rounded-xl p-8 flex flex-col justify-center">
-                        <div className="mb-4">
-                          <h4 className="text-lg font-bold mb-2">Statistik Pemeriksaan Fisik</h4>
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            Ringkasan ini memantau kelayakan fisik peralatan seperti BSC, LAF, dan Centrifuge berdasarkan pemeriksaan berkala (Bagus vs Tidak Bagus).
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/5 border border-green-500/10">
-                            <div className="w-3 h-3 rounded-full bg-[#10b981]" />
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold">Bagus</span>
-                              <span className="text-[10px] text-muted-foreground">Layak Pakai</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/5 border border-red-500/10">
-                            <div className="w-3 h-3 rounded-full bg-[#ef4444]" />
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold">Tidak Bagus</span>
-                              <span className="text-[10px] text-muted-foreground">Perlu Atensi</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-500/5 border border-slate-500/10">
-                            <div className="w-3 h-3 rounded-full bg-[#94a3b8]" />
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold">Belum Ada</span>
-                              <span className="text-[10px] text-muted-foreground">Belum Update</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* List Section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Alat Pemeriksaan</h3>
-                  {inspectionEquipment.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {inspectionEquipment.map((item) => {
+                      {tempEquipment.map((item) => {
                         const inspectionInfo = equipmentInspection?.find(ei => ei.id === item.id);
                         return (
                           <EquipmentCard
@@ -408,6 +385,213 @@ const Dashboard = () => {
                           />
                         );
                       })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Tidak ada alat suhu ditemukan
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="equipment_inspection" className="space-y-8 animate-fade-in">
+                {/* Section Title */}
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+                        <ClipboardCheck className="w-5 h-5" />
+                      </div>
+                      <h2 className="text-xl font-bold">Pemeriksaan Kondisi Alat</h2>
+                    </div>
+                  </div>
+
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={equipment?.filter(e => e.type === 'inspection').map(e => ({ ...e, location: e.location })) || []}
+                    selectedRoom={selectedEquipment}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedEquipment}
+                    onDateRangeChange={setDateRange}
+                    searchPlaceholder="Cari alat..."
+                    selectPlaceholder="Pilih Alat"
+                  />
+                </div>
+
+                {/* Inspection Analysis Section */}
+                {equipmentInspection && equipmentInspection.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">
+                        {selectedEquipment 
+                          ? `Analisis Riwayat: ${equipment?.find(e => e.id === selectedEquipment)?.name}`
+                          : "Analisis Kelayakan Aset"}
+                      </h3>
+                      {selectedEquipment && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setSelectedEquipment(null)}
+                          className="text-xs h-7 gap-1"
+                        >
+                          <X className="w-3 h-3" /> Kembali ke Semua
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className={cn(selectedEquipment ? "md:col-span-1" : "md:col-span-3")}>
+                        {selectedEquipment ? (
+                          <Card className="glass-card border-none h-full bg-secondary/20">
+                            <CardContent className="p-4 flex flex-col items-center justify-center h-full min-h-[220px]">
+                              {singleEquipInspections && singleEquipInspections.length > 0 ? (
+                                <>
+                                  <div className="h-[180px] w-full mt-2">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <LineChart
+                                        data={[...singleEquipInspections].reverse().map(log => ({
+                                          date: format(new Date(log.inspected_at), 'dd/MM', { locale: idLocale }),
+                                          fullDate: format(new Date(log.inspected_at), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
+                                          condition: log.condition,
+                                          score: log.condition === 'bagus' ? 3 : 
+                                                 log.condition === 'layak_pakai' ? 2 : 
+                                                 log.condition === 'perlu_atensi' ? 1 : 0
+                                        }))}
+                                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                                        <XAxis dataKey="date" tick={{fontSize: 9}} tickLine={false} axisLine={false} />
+                                        <YAxis domain={[0, 3]} ticks={[0, 1, 2, 3]} hide />
+                                        <RechartsTooltip 
+                                          content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                              const data = payload[0].payload;
+                                              const info = getConditionInfo(data.condition);
+                                              return (
+                                                <div className="bg-background border border-border/50 rounded-lg p-2 shadow-xl text-[10px]">
+                                                  <p className="font-bold text-muted-foreground mb-1">{data.fullDate}</p>
+                                                  <div className="flex items-center gap-2">
+                                                    <div className={cn("w-2 h-2 rounded-full", info.bgColor.replace('bg-', 'bg-opacity-100 bg-'))} />
+                                                    <span className="font-bold uppercase tracking-tight">{info.label}</span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          }}
+                                        />
+                                        <Line 
+                                          type="monotone" 
+                                          dataKey="score" 
+                                          stroke="hsl(var(--primary))" 
+                                          strokeWidth={2} 
+                                          dot={(props) => {
+                                            const { cx, cy, payload } = props;
+                                            const info = getConditionInfo(payload.condition);
+                                            const color = info.bgColor.replace('bg-', '').replace('-100', '-500');
+                                            return <circle cx={cx} cy={cy} r={4} fill={`var(--${color}, ${info.color.includes('green') ? '#10b981' : info.color.includes('blue') ? '#3b82f6' : info.color.includes('red') ? '#ef4444' : '#f97316'})`} strokeWidth={0} />;
+                                          }}
+                                          activeDot={{ r: 5, strokeWidth: 0 }}
+                                          animationDuration={1000}
+                                        />
+                                      </LineChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                  <div className="text-center mt-4">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/30 px-3 py-1 rounded-full border border-border/50">Tren Kelayakan Fisik</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-center text-muted-foreground py-8">
+                                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 opacity-20" />
+                                  <span className="text-xs">Memuat riwayat...</span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <InspectionSummaryChart
+                            data={equipmentInspection}
+                            historyData={allInspectionHistory}
+                            dateRange={dateRange}
+                            className="h-full min-h-[400px]"
+                          />
+                        )}
+                      </div>
+
+                      {selectedEquipment && (
+                        <div className="md:col-span-2 glass-card rounded-xl p-8 flex flex-col justify-center">
+                          <div className="space-y-4 h-full">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="text-lg font-bold mb-1">Status Terakhir</h4>
+                                {selectedEquipInfo?.latestInspection ? (
+                                  <div className="space-y-1.5 text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <div className={cn(
+                                        "px-2 py-0.5 rounded font-bold uppercase", 
+                                        getConditionInfo(selectedEquipInfo.latestInspection.condition).bgColor, 
+                                        getConditionInfo(selectedEquipInfo.latestInspection.condition).color
+                                      )}>
+                                        {getConditionInfo(selectedEquipInfo.latestInspection.condition).label}
+                                      </div>
+                                      <span className="text-muted-foreground">
+                                        {format(new Date(selectedEquipInfo.latestInspection.inspected_at), 'dd MMM yyyy, HH:mm', { locale: idLocale })}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-muted-foreground bg-secondary/30 px-2 py-1 rounded-md w-fit">
+                                      <User className="w-3 h-3" />
+                                      <span className="font-medium">Petugas: {selectedEquipInfo.latestInspection.profiles?.full_name || '-'}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground italic">Belum ada riwayat update</span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Simple timeline or latest notes */}
+                            <div className="bg-secondary/30 rounded-lg p-4 flex-1">
+                              <h5 className="text-xs font-bold mb-2 uppercase tracking-tight text-muted-foreground font-mono flex items-center gap-1.5 opacity-70">
+                                <Clock className="w-3 h-3" /> Catatan Terakhir:
+                              </h5>
+                              <p className="text-sm italic text-foreground/90 bg-background/50 p-2 rounded border border-border/30">
+                                {selectedEquipInfo?.latestInspection?.notes || "Tidak ada catatan untuk pemeriksaan terakhir."}
+                              </p>
+                              {selectedEquipInfo?.latestInspection && (
+                                <div className="mt-4 pt-4 border-t border-border/50">
+                                  <h5 className="text-[10px] font-bold mb-2 uppercase tracking-wider text-muted-foreground">Riwayat di Periode Terpilih:</h5>
+                                  <div className="flex gap-2">
+                                    {singleEquipInspections && singleEquipInspections.length > 0 ? (
+                                      singleEquipInspections.slice(0, 5).map((log, idx) => (
+                                        <div key={idx} className={cn("w-3 h-3 rounded-full shadow-sm", getConditionInfo(log.condition).bgColor.replace('bg-', 'bg-opacity-100 bg-'))} title={log.notes || ''} />
+                                      ))
+                                    ) : (
+                                      <span className="text-[10px] italic text-muted-foreground">Tidak ada riwayat untuk periode filter ini</span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* List Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Daftar Alat Pemeriksaan</h3>
+                  {inspectionEquipment.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {equipmentInspection?.map((item) => (
+                        <EquipmentCard
+                          key={item.id}
+                          equipment={item}
+                          onClick={() => setSelectedEquipment(item.id)}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">

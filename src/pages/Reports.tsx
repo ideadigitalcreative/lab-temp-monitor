@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { CalendarIcon, FileSpreadsheet, Loader2, Building2, Thermometer, ClipboardCheck, LayoutGrid, List, Info } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -17,6 +17,8 @@ import { saveAs } from 'file-saver';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function Reports() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -29,6 +31,40 @@ export default function Reports() {
     const [isExporting, setIsExporting] = useState(false);
     const [activeTab, setActiveTab] = useState('full');
     const isMobile = useIsMobile();
+    
+    // Preview state
+    const [previewAsset, setPreviewAsset] = useState<{ id: string, name: string, type: 'room' | 'equipment' } | null>(null);
+    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+    const handlePreview = async (asset: { id: string, name: string, type: 'room' | 'equipment' }) => {
+        setPreviewAsset(asset);
+        setIsPreviewLoading(true);
+        setPreviewData([]);
+
+        try {
+            const table = asset.type === 'room' ? 'temperature_logs' : 'equipment_temperature_logs';
+            const idField = asset.type === 'room' ? 'room_id' : 'equipment_id';
+            const fromStr = dateRange?.from ? startOfDay(dateRange.from).toISOString() : subDays(new Date(), 30).toISOString();
+            const toStr = dateRange?.to ? endOfDay(dateRange.to).toISOString() : new Date().toISOString();
+
+            const { data, error } = await (supabase as any)
+                .from(table)
+                .select('*')
+                .eq(idField, asset.id)
+                .gte('recorded_at', fromStr)
+                .lte('recorded_at', toStr)
+                .order('recorded_at', { ascending: true });
+
+            if (!error && data) {
+                setPreviewData(data);
+            }
+        } catch (e) {
+            console.error('Preview error:', e);
+        } finally {
+            setIsPreviewLoading(false);
+        }
+    };
 
     const handleExport = async (specificAssetId?: string, assetType?: 'room' | 'equipment') => {
         if (!dateRange?.from || !dateRange?.to) {
@@ -307,14 +343,35 @@ export default function Reports() {
                 sheet.getCell(row + 1, 1).value = '(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)';
                 sheet.getCell(row + 1, 1).font = { italic: true, size: 8, color: { argb: 'FF666666' } };
 
-                row += 6;
+                row += 6; // Gap after Evaluasi box
+                // Signature Section
+                sheet.getCell(row, 1).value = 'Paraf Verif :';
+                sheet.getCell(row, 1).font = { bold: true };
+                
+                // Draw a merged box for signature
+                const sigBoxHeight = 3;
+                sheet.mergeCells(row + 1, 1, row + sigBoxHeight, 2);
+                for (let r = row + 1; r <= row + sigBoxHeight; r++) {
+                    for (let c = 1; c <= 2; c++) {
+                        sheet.getCell(r, c).border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                    }
+                }
+                
+                row += sigBoxHeight + 2;
+
                 sheet.getCell(row, 1).value = 'Catatan / Keterangan :';
                 sheet.getCell(row, 1).font = { bold: true };
-                sheet.getCell(row + 1, 1).value = '- Batas Keberterimaan Temperatur : ±3°C dari standar';
-                sheet.getCell(row + 2, 1).value = '- Batas Keberterimaan Kelembaban : 40% - 60% (untuk ruangan)';
+                sheet.getCell(row + 1, 1).value = '- Batas Keberterimaan Temperatur : 20±3°C dari standar';
+                sheet.getCell(row + 2, 1).value = '- Batas Keberterimaan Kelembaban : 45% - 65% (Permen LHK Nomor 23 Tahun 2020)';
                 sheet.getCell(row + 3, 1).value = '- Segera laporkan jika parameter berada di luar batas normal.';
+                sheet.getCell(row + 4, 1).value = '- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian';
 
-                row += 5;
+                row += 6;
                 // Final Metadata Box
                 const metaStartRow = row;
 
@@ -710,14 +767,24 @@ export default function Reports() {
                                                                 <div className="text-[10px] text-muted-foreground">{item.location}</div>
                                                             </div>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-primary hover:bg-primary/10 rounded-full"
-                                                            onClick={() => handleExport(item.id, 'equipment')}
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                                                        </Button>
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-blue-500 hover:bg-blue-50 rounded-full"
+                                                                onClick={() => handlePreview({ ...item, type: 'equipment' })}
+                                                            >
+                                                                <List className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-primary hover:bg-primary/10 rounded-full"
+                                                                onClick={() => handleExport(item.id, 'equipment')}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                                                            </Button>
+                                                        </div>
                                                     </CardContent>
                                                 </Card>
                                             ))}
@@ -738,14 +805,24 @@ export default function Reports() {
                                                                 <div className="text-[10px] text-muted-foreground">{item.location}</div>
                                                             </div>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-primary hover:bg-primary/10 rounded-full"
-                                                            onClick={() => handleExport(item.id, 'room')}
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                                                        </Button>
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-blue-500 hover:bg-blue-50 rounded-full"
+                                                                onClick={() => handlePreview({ ...item, type: 'room' })}
+                                                            >
+                                                                <List className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-primary hover:bg-primary/10 rounded-full"
+                                                                onClick={() => handleExport(item.id, 'room')}
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                                                            </Button>
+                                                        </div>
                                                     </CardContent>
                                                 </Card>
                                             ))}
@@ -757,6 +834,60 @@ export default function Reports() {
                     </div>
                 </div>
             </main>
+
+            {/* Preview Dialog */}
+            <Dialog open={!!previewAsset} onOpenChange={(open) => !open && setPreviewAsset(null)}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Preview Data: {previewAsset?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="h-[400px] w-full mt-4">
+                        {isPreviewLoading ? (
+                            <div className="h-full w-full flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                        ) : previewData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={previewData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis 
+                                        dataKey="recorded_at" 
+                                        tickFormatter={(val) => format(new Date(val), 'dd/MM')}
+                                        tick={{ fontSize: 10 }}
+                                    />
+                                    <YAxis tick={{ fontSize: 10 }} />
+                                    <RechartsTooltip 
+                                        labelFormatter={(val) => format(new Date(val), 'PPP p', { locale: id })}
+                                    />
+                                    <Legend />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="temperature" 
+                                        stroke="#3b82f6" 
+                                        strokeWidth={2}
+                                        dot={false}
+                                        name="Suhu (°C)"
+                                    />
+                                    {previewAsset?.type === 'room' && (
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="humidity" 
+                                            stroke="#10b981" 
+                                            strokeWidth={2}
+                                            dot={false}
+                                            name="Kelembaban (%)"
+                                        />
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                                Tidak ada data untuk rentang tanggal ini.
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

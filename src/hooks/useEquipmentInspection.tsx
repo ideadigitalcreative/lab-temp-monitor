@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 
-export type InspectionCondition = 'bagus' | 'tidak_bagus';
+export type InspectionCondition = 'bagus' | 'tidak_bagus' | 'layak_pakai' | 'perlu_atensi';
 
 export interface EquipmentInspection {
     id: string;
@@ -38,12 +38,26 @@ export const getConditionInfo = (condition: InspectionCondition) => {
                 bgColor: 'bg-green-100',
                 borderColor: 'border-green-500',
             };
+        case 'layak_pakai':
+            return {
+                label: 'Layak Pakai',
+                color: 'text-blue-600',
+                bgColor: 'bg-blue-100',
+                borderColor: 'border-blue-500',
+            };
         case 'tidak_bagus':
             return {
                 label: 'Tidak Bagus',
                 color: 'text-red-600',
                 bgColor: 'bg-red-100',
                 borderColor: 'border-red-500',
+            };
+        case 'perlu_atensi':
+            return {
+                label: 'Perlu Atensi',
+                color: 'text-orange-600',
+                bgColor: 'bg-orange-100',
+                borderColor: 'border-orange-500',
             };
         default:
             return {
@@ -263,10 +277,10 @@ export function useEquipmentInspectionsRealtime() {
     }, [queryClient]);
 }
 
-// Fetch all equipment with their latest inspection
+// Fetch all equipment with their latest inspection AND latest temperature reading
 export function useAllEquipmentWithLatestInspection() {
     const { data: equipment, isLoading: equipLoading } = useQuery({
-        queryKey: ['equipment', 'all_inspection'],
+        queryKey: ['equipment', 'all_inspection_v3'],
         queryFn: async () => {
             const { data, error } = await (supabase as any)
                 .from('equipment')
@@ -279,12 +293,13 @@ export function useAllEquipmentWithLatestInspection() {
     });
 
     const { data: latestInspections, isLoading: logsLoading } = useQuery({
-        queryKey: ['equipment_inspections', 'latest_all_dashboard'],
+        queryKey: ['equipment_inspections', 'latest_all_dashboard_v3'],
         queryFn: async () => {
-            const { data, error } = await (supabase as any)
+            const { data, error } = await supabase
                 .from('equipment_inspections')
                 .select('id, equipment_id, condition, notes, inspected_by, inspected_at')
-                .order('inspected_at', { ascending: false });
+                .order('inspected_at', { ascending: false })
+                .limit(1000);
 
             if (error) throw error;
 
@@ -295,43 +310,97 @@ export function useAllEquipmentWithLatestInspection() {
                 }
             });
 
-            return Array.from(latestMap.values());
+            const uniqueLatest = Array.from(latestMap.values());
+            const userIds = Array.from(new Set(uniqueLatest.map(log => log.inspected_by).filter(id => !!id))) as string[];
+
+            if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+
+                const profileMap = new Map(profiles?.map(p => [p.id, p]));
+                return uniqueLatest.map(log => ({
+                    ...log,
+                    profiles: log.inspected_by ? profileMap.get(log.inspected_by) : undefined
+                }));
+            }
+
+            return uniqueLatest;
+        }
+    });
+
+    const { data: latestReadings, isLoading: readingsLoading } = useQuery({
+        queryKey: ['equipment_readings', 'latest_all_dashboard_v3'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('equipment_temperature_logs')
+                .select('id, equipment_id, temperature, recorded_by, recorded_at')
+                .order('recorded_at', { ascending: false });
+
+            if (error) throw error;
+
+            const latestMap = new Map();
+            (data as any[])?.forEach(log => {
+                if (!latestMap.has(log.equipment_id)) {
+                    latestMap.set(log.equipment_id, log);
+                }
+            });
+
+            const uniqueLatest = Array.from(latestMap.values());
+            const userIds = Array.from(new Set(uniqueLatest.map(log => log.recorded_by).filter(id => !!id))) as string[];
+
+            if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+
+                const profileMap = new Map(profiles?.map(p => [p.id, p]));
+                return uniqueLatest.map(log => ({
+                    ...log,
+                    profiles: log.recorded_by ? profileMap.get(log.recorded_by) : undefined
+                }));
+            }
+
+            return uniqueLatest;
         }
     });
 
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        const channel = supabase
-            .channel('equipment_inspections_dashboard_sync')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'equipment_inspections',
-                },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ['equipment_inspections', 'latest_all_dashboard'] });
-                }
-            )
+        const iChannel = supabase
+            .channel('inspections_realtime_v3')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_inspections' }, 
+                () => queryClient.invalidateQueries({ queryKey: ['equipment_inspections', 'latest_all_dashboard_v3'] }))
+            .subscribe();
+
+        const rChannel = supabase
+            .channel('readings_realtime_v3')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_temperature_logs' }, 
+                () => queryClient.invalidateQueries({ queryKey: ['equipment_readings', 'latest_all_dashboard_v3'] }))
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(iChannel);
+            supabase.removeChannel(rChannel);
         };
     }, [queryClient]);
 
     const combined = (equipment || []).map(equip => {
-        const latest = latestInspections?.find((log: any) => log.equipment_id === equip.id);
+        const latestI = latestInspections?.find((log: any) => log.equipment_id === equip.id);
+        const latestR = latestReadings?.find((log: any) => log.equipment_id === equip.id);
         return {
             ...equip,
-            latestInspection: latest
+            latestInspection: latestI,
+            latestReading: latestR,
+            status: latestR ? (latestR.temperature < 15 || latestR.temperature > 25 ? 'critical' : 'normal') : 'normal'
         };
     });
 
     return {
         data: combined as any[],
-        isLoading: equipLoading || logsLoading
+        isLoading: equipLoading || logsLoading || readingsLoading
     };
 }

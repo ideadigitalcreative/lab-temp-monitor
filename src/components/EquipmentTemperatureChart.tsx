@@ -79,15 +79,6 @@ export function EquipmentTemperatureChart({
         const avg = (arr: number[]) =>
           arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : undefined;
         
-        // Collect names for each slot
-        const getNames = (slot: 'pagi' | 'siang' | 'sore') => {
-          const names = data
-            .filter(log => format(startOfDay(log.recordedAt), 'yyyy-MM-dd') === dayKey && getTimeSlot(log.recordedAt) === slot)
-            .map(log => log.recordedByName)
-            .filter(Boolean);
-          return Array.from(new Set(names)).join(', ');
-        };
-
         return {
           date: format(d, 'dd/MM', { locale: id }),
           dateLabel: format(d, 'd MMM', { locale: id }),
@@ -95,9 +86,6 @@ export function EquipmentTemperatureChart({
           suhuPagi: round2(avg(temps.pagi)),
           suhuSiang: round2(avg(temps.siang)),
           suhuSore: round2(avg(temps.sore)),
-          petugasPagi: getNames('pagi'),
-          petugasSiang: getNames('siang'),
-          petugasSore: getNames('sore'),
         };
       });
   }, [data]);
@@ -111,18 +99,26 @@ export function EquipmentTemperatureChart({
 
     const toastId = toast.loading('Sedang menyiapkan file Excel...');
     try {
-      const rows = chartData.map((row) => ({
-        Tanggal: row.fullDate,
-        'Suhu Pagi (°C)': row.suhuPagi ?? '-',
-        'Petugas Pagi': row.petugasPagi || '-',
-        'Suhu Siang (°C)': row.suhuSiang ?? '-',
-        'Petugas Siang': row.petugasSiang || '-',
-        'Suhu Sore (°C)': row.suhuSore ?? '-',
-        'Petugas Sore': row.petugasSore || '-',
+      const rows = [...logsToExport].reverse().map((log) => ({
+        Waktu: format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }),
+        Alat: log.roomName || '-',
+        'Suhu (°C)': log.temperature,
+        Petugas: log.recordedByName || '-',
+        Evaluasi: '',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Suhu Alat');
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Suhu Alat');
+
+      // Auto-width
+      ws['!cols'] = [
+        { wch: 20 }, // Waktu
+        { wch: 30 }, // Alat
+        { wch: 10 }, // Suhu
+        { wch: 30 }, // Petugas
+        { wch: 30 }, // Evaluasi
+      ];
+
       XLSX.writeFile(wb, `Suhu_Alat_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
       toast.dismiss(toastId);
       toast.success('File Excel berhasil diunduh');
@@ -200,57 +196,51 @@ export function EquipmentTemperatureChart({
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
       pdf.setTextColor(33, 33, 33);
-      pdf.text('Data per Waktu Pemeriksaan:', 15, tableTop);
+      pdf.text('Data Pemantauan Suhu Alat:', 15, tableTop);
       pdf.setFontSize(8);
       pdf.setTextColor(60, 60, 60);
       let y = tableTop + 8;
 
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
-      pdf.text('Tanggal', 20, y);
-      pdf.text('Pagi', 60, y);
-      pdf.text('Siang', 105, y);
-      pdf.text('Sore', 150, y);
-      y += 8;
+      const drawTableHeader = (startY: number) => {
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(15, startY - 4, pageWidth - 30, 6, 'F');
+        pdf.text('Waktu', 18, startY);
+        pdf.text('Nama Alat', 55, startY);
+        pdf.text('Suhu', 110, startY);
+        pdf.text('Petugas', 130, startY);
+        return startY + 8;
+      };
 
+      y = drawTableHeader(y);
+
+      const logsToExport = sourceData ?? data;
+      const displayData = [...logsToExport].reverse();
       let totalPages = 1;
-      chartData.forEach((row) => {
+
+      displayData.forEach((log) => {
         if (y > pageHeight - 20) {
           pdf.addPage();
           totalPages++;
           y = 20;
-          pdf.setFillColor(240, 240, 240);
-          pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
-          pdf.text('Tanggal', 20, y);
-          pdf.text('Pagi', 60, y);
-          pdf.text('Siang', 105, y);
-          pdf.text('Sore', 150, y);
-          y += 8;
+          y = drawTableHeader(y);
         }
-        pdf.text(row.fullDate, 20, y);
         
-        // Pagi
-        pdf.text(row.suhuPagi != null ? `${row.suhuPagi}°C` : '-', 60, y);
-        pdf.setFontSize(6);
-        pdf.text(row.petugasPagi || '', 60, y + 3);
-        pdf.setFontSize(8);
-
-        // Siang
-        pdf.text(row.suhuSiang != null ? `${row.suhuSiang}°C` : '-', 105, y);
-        pdf.setFontSize(6);
-        pdf.text(row.petugasSiang || '', 105, y + 3);
-        pdf.setFontSize(8);
-
-        // Sore
-        pdf.text(row.suhuSore != null ? `${row.suhuSore}°C` : '-', 150, y);
-        pdf.setFontSize(6);
-        pdf.text(row.petugasSore || '', 150, y + 3);
-        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }), 18, y);
+        pdf.text(log.roomName || '-', 55, y);
+        pdf.text(`${log.temperature}°C`, 110, y);
         
-        y += 7;
+        if (log.recordedByName) {
+          const splitOfficer = pdf.splitTextToSize(log.recordedByName, 50);
+          pdf.text(splitOfficer, 130, y);
+        } else {
+          pdf.text('-', 130, y);
+        }
+
+        y += 6;
       });
 
-      // Footer (sama dengan laporan Monitoring Ruangan)
+      // Footer
       if (y > pageHeight - 80) {
         pdf.addPage();
         totalPages++;
@@ -283,11 +273,13 @@ export function EquipmentTemperatureChart({
       y += 5;
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
-      pdf.text('- Batas Keberterimaan Temperatur : ±3°C dari standar', 15, y);
+      pdf.text('- Batas Keberterimaan Temperatur : 20±3°C dari standar', 15, y);
       y += 5;
-      pdf.text('- Batas Keberterimaan Kelembaban : 40% - 60% (untuk ruangan)', 15, y);
+      pdf.text('- Batas Keberterimaan Kelembaban : 45% - 65% (Permen LHK Nomor 23 Tahun 2020)', 15, y);
       y += 5;
       pdf.text('- Segera laporkan jika parameter berada di luar batas normal.', 15, y);
+      y += 5;
+      pdf.text('- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian', 15, y);
 
       y += 15;
       pdf.setFont('helvetica', 'italic');
@@ -320,54 +312,48 @@ export function EquipmentTemperatureChart({
     }
   };
 
-  type TooltipPayloadItem = {
-    name: string;
-    value?: number;
-    color: string;
-    dataKey: string;
-    payload?: { dateLabel: string; fullDate: string; suhuPagi?: number; suhuSiang?: number; suhuSore?: number };
-  };
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayloadItem[] }) => {
-    if (!active || !payload?.length) return null;
-    const row = payload[0]?.payload;
-    if (!row) return null;
-    return (
-      <div className="chart-tooltip rounded-lg border border-border/50 bg-background px-3 py-2 shadow-xl">
-        <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
-          {row.dateLabel}
-        </p>
-        <p className="text-sm text-muted-foreground mb-2">{row.fullDate}</p>
-        <div className="space-y-1 pt-2 border-t border-border/50">
-          {row.suhuPagi != null && (
-            <p className="text-sm flex items-center justify-between gap-4">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-pagi))]" />
-                <span className="text-muted-foreground">Suhu Pagi:</span>
-              </span>
-              <span className="font-mono font-bold">{row.suhuPagi}°C</span>
-            </p>
-          )}
-          {row.suhuSiang != null && (
-            <p className="text-sm flex items-center justify-between gap-4">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-siang))]" />
-                <span className="text-muted-foreground">Suhu Siang:</span>
-              </span>
-              <span className="font-mono font-bold">{row.suhuSiang}°C</span>
-            </p>
-          )}
-          {row.suhuSore != null && (
-            <p className="text-sm flex items-center justify-between gap-4">
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-sore))]" />
-                <span className="text-muted-foreground">Suhu Sore:</span>
-              </span>
-              <span className="font-mono font-bold">{row.suhuSore}°C</span>
-            </p>
-          )}
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const row = payload[0].payload;
+      return (
+        <div className="chart-tooltip rounded-lg border border-border/50 bg-background px-3 py-2 shadow-xl">
+          <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1">
+            {row.dateLabel}
+          </p>
+          <p className="text-sm text-muted-foreground mb-2">{row.fullDate}</p>
+          <div className="space-y-1 pt-2 border-t border-border/50">
+            {row.suhuPagi != null && (
+              <p className="text-sm flex items-center justify-between gap-4">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-pagi))]" />
+                  <span className="text-muted-foreground">Suhu Pagi:</span>
+                </span>
+                <span className="font-mono font-bold">{row.suhuPagi}°C</span>
+              </p>
+            )}
+            {row.suhuSiang != null && (
+              <p className="text-sm flex items-center justify-between gap-4">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-siang))]" />
+                  <span className="text-muted-foreground">Suhu Siang:</span>
+                </span>
+                <span className="font-mono font-bold">{row.suhuSiang}°C</span>
+              </p>
+            )}
+            {row.suhuSore != null && (
+              <p className="text-sm flex items-center justify-between gap-4">
+                <span className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-sore))]" />
+                  <span className="text-muted-foreground">Suhu Sore:</span>
+                </span>
+                <span className="font-mono font-bold">{row.suhuSore}°C</span>
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   };
 
   const lineProps = {

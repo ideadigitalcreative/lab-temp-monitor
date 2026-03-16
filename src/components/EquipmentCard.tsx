@@ -29,15 +29,14 @@ export function EquipmentCard({ equipment, onClick }: EquipmentCardProps) {
                             <span className="truncate">{equipment.location}</span>
                         </div>
                     </div>
-                    {latestReading ? (
-                        <StatusBadge status={status} />
-                    ) : (
-                        inspectionConfig ? (
-                            <span className={cn("px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border", inspectionConfig.bgColor, inspectionConfig.color, inspectionConfig.borderColor)}>
+                    <div className="flex flex-col items-end gap-1.5">
+                        {latestReading && <StatusBadge status={status} />}
+                        {inspectionConfig && (
+                            <span className={cn("px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border", inspectionConfig.bgColor, inspectionConfig.color, inspectionConfig.borderColor)}>
                                 {inspectionConfig.label}
                             </span>
-                        ) : null
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 <div className="space-y-3">

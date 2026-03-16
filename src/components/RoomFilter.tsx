@@ -28,6 +28,8 @@ interface RoomFilterProps {
   onRoomChange: (roomId: string | null) => void;
   onDateRangeChange: (range: DateRange | undefined) => void;
   onSearchQueryChange?: (query: string) => void;
+  searchPlaceholder?: string;
+  selectPlaceholder?: string;
 }
 
 export function RoomFilter({
@@ -37,6 +39,8 @@ export function RoomFilter({
   onRoomChange,
   onDateRangeChange,
   onSearchQueryChange,
+  searchPlaceholder = "Cari ruangan...",
+  selectPlaceholder = "Pilih Ruangan",
 }: RoomFilterProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -61,7 +65,7 @@ export function RoomFilter({
       <div className="relative flex-1 sm:flex-none">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Cari ruangan..."
+          placeholder={searchPlaceholder}
           className="pl-10 w-full sm:w-[200px] h-11 sm:h-10"
           value={searchQuery}
           onChange={handleSearchChange}
@@ -75,10 +79,10 @@ export function RoomFilter({
           onValueChange={(value) => onRoomChange(value === 'all' ? null : value)}
         >
           <SelectTrigger className="w-full sm:w-[200px] h-11 sm:h-10">
-            <SelectValue placeholder="Pilih Ruangan" />
+            <SelectValue placeholder={selectPlaceholder} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua Ruangan</SelectItem>
+            <SelectItem value="all">Semua {selectPlaceholder.includes('Alat') ? 'Alat' : 'Ruangan'}</SelectItem>
             {filteredRooms.map((room) => (
               <SelectItem key={room.id} value={room.id}>
                 {room.name}

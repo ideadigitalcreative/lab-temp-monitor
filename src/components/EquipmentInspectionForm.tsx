@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, XCircle, ArrowLeft, ClipboardCheck, Box, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowLeft, ClipboardCheck, Box, Loader2, PlayCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { InspectionCondition, getConditionInfo } from '@/hooks/useEquipmentInspection';
@@ -150,6 +150,42 @@ export function EquipmentInspectionForm({
                             </span>
                         </Label>
 
+                        {/* Layak Pakai Option */}
+                        <Label
+                            htmlFor="condition-layak_pakai"
+                            className={`
+                                flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all
+                                ${condition === 'layak_pakai'
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                    : 'border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
+                                }
+                            `}
+                        >
+                            <RadioGroupItem
+                                value="layak_pakai"
+                                id="condition-layak_pakai"
+                                className="sr-only"
+                            />
+                            <div className={`
+                                w-12 h-12 rounded-full flex items-center justify-center
+                                ${condition === 'layak_pakai'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                }
+                            `}>
+                                <PlayCircle className="w-6 h-6" />
+                            </div>
+                            <span className={`
+                                font-semibold text-center
+                                ${condition === 'layak_pakai'
+                                    ? 'text-blue-700 dark:text-blue-300'
+                                    : 'text-foreground'
+                                }
+                            `}>
+                                Layak Pakai
+                            </span>
+                        </Label>
+
                         {/* Tidak Bagus Option */}
                         <Label
                             htmlFor="condition-tidak_bagus"
@@ -183,6 +219,42 @@ export function EquipmentInspectionForm({
                                 }
                             `}>
                                 Tidak Bagus
+                            </span>
+                        </Label>
+
+                        {/* Perlu Atensi Option */}
+                        <Label
+                            htmlFor="condition-perlu_atensi"
+                            className={`
+                                flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all
+                                ${condition === 'perlu_atensi'
+                                    ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                                    : 'border-border hover:border-orange-300 hover:bg-orange-50/50 dark:hover:bg-orange-900/10'
+                                }
+                            `}
+                        >
+                            <RadioGroupItem
+                                value="perlu_atensi"
+                                id="condition-perlu_atensi"
+                                className="sr-only"
+                            />
+                            <div className={`
+                                w-12 h-12 rounded-full flex items-center justify-center
+                                ${condition === 'perlu_atensi'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                                }
+                            `}>
+                                <AlertTriangle className="w-6 h-6" />
+                            </div>
+                            <span className={`
+                                font-semibold text-center
+                                ${condition === 'perlu_atensi'
+                                    ? 'text-orange-700 dark:text-orange-300'
+                                    : 'text-foreground'
+                                }
+                            `}>
+                                Perlu Atensi
                             </span>
                         </Label>
                     </RadioGroup>
