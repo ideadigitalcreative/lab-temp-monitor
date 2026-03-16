@@ -327,7 +327,7 @@ export default function Reports() {
                 return startRow + rows.length + 1;
             };
 
-            const addFooter = (sheet: ExcelJS.Worksheet, startRow: number, tableWidth: number) => {
+            const addFooter = (sheet: ExcelJS.Worksheet, startRow: number, tableWidth: number, hideNotes: boolean = false) => {
                 let row = startRow + 1;
                 sheet.getCell(row, 1).value = 'Evaluasi :';
                 sheet.getCell(row, 1).font = { bold: true };
@@ -364,14 +364,17 @@ export default function Reports() {
                 
                 row += sigBoxHeight + 2;
 
-                sheet.getCell(row, 1).value = 'Catatan / Keterangan :';
-                sheet.getCell(row, 1).font = { bold: true };
-                sheet.getCell(row + 1, 1).value = '- Batas Keberterimaan Temperatur : 20±3°C dari standar';
-                sheet.getCell(row + 2, 1).value = '- Batas Keberterimaan Kelembaban : 45% - 65% (Permen LHK Nomor 23 Tahun 2020)';
-                sheet.getCell(row + 3, 1).value = '- Segera laporkan jika parameter berada di luar batas normal.';
-                sheet.getCell(row + 4, 1).value = '- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian';
-
-                row += 6;
+                if (!hideNotes) {
+                    sheet.getCell(row, 1).value = 'Catatan / Keterangan :';
+                    sheet.getCell(row, 1).font = { bold: true };
+                    sheet.getCell(row + 1, 1).value = '- Batas Keberterimaan Temperatur : 20±3°C dari standar';
+                    sheet.getCell(row + 2, 1).value = '- Batas Keberterimaan Kelembaban : 45% - 65% (Permen LHK Nomor 23 Tahun 2020)';
+                    sheet.getCell(row + 3, 1).value = '- Segera laporkan jika parameter berada di luar batas normal.';
+                    sheet.getCell(row + 4, 1).value = '- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian';
+                    row += 6;
+                } else {
+                    row += 2;
+                }
                 // Final Metadata Box
                 const metaStartRow = row;
 
@@ -489,7 +492,7 @@ export default function Reports() {
                     userMap.get(log.inspected_by || '') || '-'
                 ]);
                 const nextRow = addTableWithBorders(ws, startRow, headers, rows);
-                addFooter(ws, nextRow, headers.length);
+                addFooter(ws, nextRow, headers.length, true);
             }
 
             // Iterate over Room Assets
