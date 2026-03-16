@@ -22,6 +22,10 @@ export interface EquipmentTemperatureLog {
         name: string;
         location: string;
     };
+    profiles?: {
+        full_name: string | null;
+        email: string | null;
+    };
 }
 
 export interface EquipmentWithLatestReading extends Equipment {
@@ -123,7 +127,25 @@ export function useEquipmentTemperatureLogs(equipmentId?: string, fromDate?: Dat
             const { data, error } = await query.limit(500);
 
             if (error) throw error;
-            return data as EquipmentTemperatureLog[];
+
+            // Manual join with profiles
+            const logs = data as EquipmentTemperatureLog[];
+            const userIds = Array.from(new Set(logs.map(log => log.recorded_by).filter(id => !!id))) as string[];
+
+            if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+
+                const profileMap = new Map(profiles?.map(p => [p.id, p]));
+                return logs.map(log => ({
+                    ...log,
+                    profiles: log.recorded_by ? profileMap.get(log.recorded_by) : undefined
+                }));
+            }
+
+            return logs;
         },
     });
 }
@@ -147,7 +169,25 @@ export function useEquipmentWithLatestReadings() {
                 .order('recorded_at', { ascending: false });
 
             if (error) throw error;
-            return data as EquipmentTemperatureLog[];
+            
+            // Manual join with profiles
+            const logs = data as EquipmentTemperatureLog[];
+            const userIds = Array.from(new Set(logs.map(log => log.recorded_by).filter(id => !!id))) as string[];
+
+            if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+
+                const profileMap = new Map(profiles?.map(p => [p.id, p]));
+                return logs.map(log => ({
+                    ...log,
+                    profiles: log.recorded_by ? profileMap.get(log.recorded_by) : undefined
+                }));
+            }
+
+            return logs;
         },
     });
 

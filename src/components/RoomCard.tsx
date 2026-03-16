@@ -52,11 +52,20 @@ export function RoomCard({ room, onClick }: RoomCardProps) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-            <Clock className="w-3 h-3" />
-            <span>
-              Update: {format(new Date(latestReading.recorded_at), 'dd MMM yyyy, HH:mm', { locale: id })}
-            </span>
+          <div className="flex flex-col gap-1 text-muted-foreground text-[10px]">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3" />
+              <span>
+                Update: {format(new Date(latestReading.recorded_at), 'dd MMM yyyy, HH:mm', { locale: id })}
+              </span>
+            </div>
+            {latestReading.profiles && (
+              <div className="flex items-center gap-1.5 opacity-80">
+                <span className="font-semibold text-primary/70 italic">
+                  Oleh: {latestReading.profiles.full_name || latestReading.profiles.email || '-'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       ) : (

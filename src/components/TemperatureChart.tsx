@@ -27,6 +27,7 @@ interface TemperatureLog {
   temperature: number;
   humidity?: number;
   recordedAt: Date;
+  recordedByName?: string;
 }
 
 interface TemperatureChartProps {
@@ -69,6 +70,7 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
         Asset: log.roomName || '-',
         'Suhu (°C)': log.temperature,
         ...(hasHumidity ? { 'Kelembaban (%)': log.humidity ?? '-' } : {}),
+        Petugas: log.recordedByName || '-',
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -79,8 +81,9 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       const wscols = [
         { wch: 20 }, // Waktu
         { wch: 30 }, // Asset
-        { wch: 15 }, // Suhu
-        { wch: 15 }, // Kelembaban
+        { wch: 10 }, // Suhu
+        { wch: 10 }, // Kelembaban
+        { wch: 30 }, // Petugas
       ];
       ws['!cols'] = wscols;
 
@@ -178,11 +181,14 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       const drawTableHeader = (startY: number) => {
         pdf.setFillColor(240, 240, 240);
         pdf.rect(15, startY - 4, pageWidth - 30, 6, 'F');
-        pdf.text('Waktu', 20, startY);
-        pdf.text('Asset', 70, startY);
-        pdf.text('Suhu', 130, startY);
+        pdf.text('Waktu', 18, startY);
+        pdf.text('Asset', 55, startY);
+        pdf.text('Suhu', 95, startY);
         if (hasHumidity) {
-          pdf.text('Kelembaban', 170, startY);
+          pdf.text('Lembab', 115, startY);
+          pdf.text('Petugas', 140, startY);
+        } else {
+          pdf.text('Petugas', 115, startY);
         }
         return startY + 8;
       };
@@ -200,11 +206,14 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
           y = 20;
           y = drawTableHeader(y);
         }
-        pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }), 20, y);
-        pdf.text(log.roomName || '-', 70, y);
-        pdf.text(`${log.temperature}°C`, 130, y);
+        pdf.text(format(log.recordedAt, 'dd/MM/yyyy HH:mm:ss', { locale: id }), 18, y);
+        pdf.text(log.roomName || '-', 55, y);
+        pdf.text(`${log.temperature}°C`, 95, y);
         if (hasHumidity) {
-          pdf.text(log.humidity !== undefined ? `${log.humidity}%` : '-', 170, y);
+          pdf.text(log.humidity !== undefined ? `${log.humidity}%` : '-', 115, y);
+          pdf.text(log.recordedByName || '-', 140, y);
+        } else {
+          pdf.text(log.recordedByName || '-', 115, y);
         }
         y += 6;
       });

@@ -15,6 +15,10 @@ export interface EquipmentInspection {
         name: string;
         location: string;
     };
+    profiles?: {
+        full_name: string | null;
+        email: string | null;
+    };
 }
 
 export interface EquipmentWithLatestInspection {
@@ -80,7 +84,25 @@ export function useEquipmentInspections(equipmentId?: string, fromDate?: Date, t
             const { data, error } = await query.limit(500);
 
             if (error) throw error;
-            return data as EquipmentInspection[];
+
+            // Manual join with profiles
+            const logs = data as EquipmentInspection[];
+            const userIds = Array.from(new Set(logs.map(log => log.inspected_by).filter(id => !!id))) as string[];
+
+            if (userIds.length > 0) {
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+
+                const profileMap = new Map(profiles?.map(p => [p.id, p]));
+                return logs.map(log => ({
+                    ...log,
+                    profiles: log.inspected_by ? profileMap.get(log.inspected_by) : undefined
+                }));
+            }
+
+            return logs;
         },
     });
 }
@@ -107,7 +129,20 @@ export function useLatestEquipmentInspection(equipmentId: string | null) {
                 .maybeSingle();
 
             if (error) throw error;
-            return data as EquipmentInspection | null;
+            if (!data) return null;
+
+            const log = data as EquipmentInspection;
+            if (log.inspected_by) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .eq('id', log.inspected_by)
+                    .single();
+                
+                if (profile) log.profiles = profile;
+            }
+
+            return log;
         },
         enabled: !!equipmentId,
     });

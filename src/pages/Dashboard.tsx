@@ -109,6 +109,7 @@ const Dashboard = () => {
       temperature: log.temperature,
       humidity: log.humidity,
       recordedAt: new Date(log.recorded_at),
+      recordedByName: log.profiles?.full_name || log.profiles?.email || 'System',
     }));
   }, [temperatureLogs]);
 
@@ -119,6 +120,7 @@ const Dashboard = () => {
       roomName: log.equipment?.name,
       temperature: log.temperature,
       recordedAt: new Date(log.recorded_at),
+      recordedByName: log.profiles?.full_name || log.profiles?.email || 'System',
     }));
   }, [equipmentLogs]);
 

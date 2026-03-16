@@ -80,6 +80,7 @@ export function EquipmentCard({ equipment, onClick }: EquipmentCardProps) {
                         <Thermometer className="w-3 h-3" />
                         <span>
                             Suhu: {format(new Date(latestReading.recorded_at), 'dd MMM, HH:mm', { locale: id })}
+                            {latestReading.profiles && ` (Oleh: ${latestReading.profiles.full_name || latestReading.profiles.email})`}
                         </span>
                     </div>
                 )}
@@ -88,6 +89,7 @@ export function EquipmentCard({ equipment, onClick }: EquipmentCardProps) {
                         <Clock className="w-3 h-3" />
                         <span>
                             Cek Fisik: {format(new Date(latestInspection.inspected_at), 'dd MMM, HH:mm', { locale: id })}
+                            {latestInspection.profiles && ` (Oleh: ${latestInspection.profiles.full_name || latestInspection.profiles.email})`}
                         </span>
                     </div>
                 )}

@@ -22,6 +22,10 @@ export interface TemperatureLog {
     name: string;
     location: string;
   };
+  profiles?: {
+    full_name: string | null;
+    email: string | null;
+  };
 }
 
 export interface RoomWithLatestReading extends Room {
@@ -112,6 +116,23 @@ export function useTemperatureLogs(roomId?: string, fromDate?: Date, toDate?: Da
       const { data, error } = await query.limit(500);
 
       if (error) throw error;
+
+      // Manual join with profiles as there is no direct foreign key
+      const userIds = Array.from(new Set((data as TemperatureLog[]).map(log => log.recorded_by).filter(id => !!id))) as string[];
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+        
+        const profileMap = new Map(profiles?.map(p => [p.id, p]));
+        return (data as TemperatureLog[]).map(log => ({
+          ...log,
+          profiles: log.recorded_by ? profileMap.get(log.recorded_by) : undefined
+        }));
+      }
+
       return data as TemperatureLog[];
     },
   });
@@ -136,7 +157,25 @@ export function useRoomsWithLatestReadings() {
         .order('recorded_at', { ascending: false });
 
       if (error) throw error;
-      return data as TemperatureLog[];
+      
+      // Manual join with profiles
+      const logs = data as TemperatureLog[];
+      const userIds = Array.from(new Set(logs.map(log => log.recorded_by).filter(id => !!id))) as string[];
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .in('id', userIds);
+        
+        const profileMap = new Map(profiles?.map(p => [p.id, p]));
+        return logs.map(log => ({
+          ...log,
+          profiles: log.recorded_by ? profileMap.get(log.recorded_by) : undefined
+        }));
+      }
+
+      return logs;
     },
   });
 

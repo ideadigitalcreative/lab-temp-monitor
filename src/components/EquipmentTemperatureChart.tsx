@@ -35,6 +35,7 @@ export interface EquipmentTemperatureLogChart {
   roomName?: string;
   temperature: number;
   recordedAt: Date;
+  recordedByName?: string;
 }
 
 export interface EquipmentTemperatureChartProps {
@@ -77,6 +78,16 @@ export function EquipmentTemperatureChart({
         const d = new Date(dayKey);
         const avg = (arr: number[]) =>
           arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : undefined;
+        
+        // Collect names for each slot
+        const getNames = (slot: 'pagi' | 'siang' | 'sore') => {
+          const names = data
+            .filter(log => format(startOfDay(log.recordedAt), 'yyyy-MM-dd') === dayKey && getTimeSlot(log.recordedAt) === slot)
+            .map(log => log.recordedByName)
+            .filter(Boolean);
+          return Array.from(new Set(names)).join(', ');
+        };
+
         return {
           date: format(d, 'dd/MM', { locale: id }),
           dateLabel: format(d, 'd MMM', { locale: id }),
@@ -84,6 +95,9 @@ export function EquipmentTemperatureChart({
           suhuPagi: round2(avg(temps.pagi)),
           suhuSiang: round2(avg(temps.siang)),
           suhuSore: round2(avg(temps.sore)),
+          petugasPagi: getNames('pagi'),
+          petugasSiang: getNames('siang'),
+          petugasSore: getNames('sore'),
         };
       });
   }, [data]);
@@ -100,8 +114,11 @@ export function EquipmentTemperatureChart({
       const rows = chartData.map((row) => ({
         Tanggal: row.fullDate,
         'Suhu Pagi (°C)': row.suhuPagi ?? '-',
+        'Petugas Pagi': row.petugasPagi || '-',
         'Suhu Siang (°C)': row.suhuSiang ?? '-',
+        'Petugas Siang': row.petugasSiang || '-',
         'Suhu Sore (°C)': row.suhuSore ?? '-',
+        'Petugas Sore': row.petugasSore || '-',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -191,9 +208,9 @@ export function EquipmentTemperatureChart({
       pdf.setFillColor(240, 240, 240);
       pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
       pdf.text('Tanggal', 20, y);
-      pdf.text('Suhu Pagi', 70, y);
-      pdf.text('Suhu Siang', 110, y);
-      pdf.text('Suhu Sore', 150, y);
+      pdf.text('Pagi', 60, y);
+      pdf.text('Siang', 105, y);
+      pdf.text('Sore', 150, y);
       y += 8;
 
       let totalPages = 1;
@@ -205,16 +222,32 @@ export function EquipmentTemperatureChart({
           pdf.setFillColor(240, 240, 240);
           pdf.rect(15, y - 4, pageWidth - 30, 6, 'F');
           pdf.text('Tanggal', 20, y);
-          pdf.text('Suhu Pagi', 70, y);
-          pdf.text('Suhu Siang', 110, y);
-          pdf.text('Suhu Sore', 150, y);
+          pdf.text('Pagi', 60, y);
+          pdf.text('Siang', 105, y);
+          pdf.text('Sore', 150, y);
           y += 8;
         }
         pdf.text(row.fullDate, 20, y);
-        pdf.text(row.suhuPagi != null ? `${row.suhuPagi}°C` : '-', 70, y);
-        pdf.text(row.suhuSiang != null ? `${row.suhuSiang}°C` : '-', 110, y);
+        
+        // Pagi
+        pdf.text(row.suhuPagi != null ? `${row.suhuPagi}°C` : '-', 60, y);
+        pdf.setFontSize(6);
+        pdf.text(row.petugasPagi || '', 60, y + 3);
+        pdf.setFontSize(8);
+
+        // Siang
+        pdf.text(row.suhuSiang != null ? `${row.suhuSiang}°C` : '-', 105, y);
+        pdf.setFontSize(6);
+        pdf.text(row.petugasSiang || '', 105, y + 3);
+        pdf.setFontSize(8);
+
+        // Sore
         pdf.text(row.suhuSore != null ? `${row.suhuSore}°C` : '-', 150, y);
-        y += 6;
+        pdf.setFontSize(6);
+        pdf.text(row.petugasSore || '', 150, y + 3);
+        pdf.setFontSize(8);
+        
+        y += 7;
       });
 
       // Footer (sama dengan laporan Monitoring Ruangan)
