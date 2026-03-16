@@ -23,9 +23,7 @@ interface InspectionSummaryChartProps {
 
 const COLORS = {
     bagus: '#10b981', // green-500
-    layak_pakai: '#3b82f6', // blue-500
     tidak_bagus: '#ef4444', // red-500
-    perlu_atensi: '#f97316', // orange-500
 };
 
 export function InspectionSummaryChart({ data, historyData, dateRange, className }: InspectionSummaryChartProps) {
@@ -35,18 +33,16 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
     const trendData = useMemo(() => {
         if (!historyData || historyData.length === 0) return [];
 
-        const byDate = new Map<string, { bagus: number, layak: number, tidak: number, atensi: number }>();
+        const byDate = new Map<string, { bagus: number, tidak: number }>();
 
         historyData.forEach(log => {
             const dateKey = format(startOfDay(new Date(log.inspected_at)), 'yyyy-MM-dd');
             if (!byDate.has(dateKey)) {
-                byDate.set(dateKey, { bagus: 0, layak: 0, tidak: 0, atensi: 0 });
+                byDate.set(dateKey, { bagus: 0, tidak: 0 });
             }
             const stats = byDate.get(dateKey)!;
             if (log.condition === 'bagus') stats.bagus++;
-            else if (log.condition === 'layak_pakai') stats.layak++;
             else if (log.condition === 'tidak_bagus') stats.tidak++;
-            else if (log.condition === 'perlu_atensi') stats.atensi++;
         });
 
         return Array.from(byDate.entries())
@@ -55,9 +51,7 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
                 date: format(new Date(dateKey), 'dd/MM', { locale: id }),
                 fullDate: format(new Date(dateKey), 'dd MMM yyyy', { locale: id }),
                 'Bagus': stats.bagus,
-                'Layak Pakai': stats.layak,
                 'Tidak Bagus': stats.tidak,
-                'Perlu Atensi': stats.atensi
             }));
     }, [historyData]);
 
@@ -66,15 +60,13 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
     // For summary stats (latest)
     const latestStats = useMemo(() => {
         let bagus = 0;
-        let layak = 0;
         data.forEach(item => {
             if (item.latestInspection?.condition === 'bagus') bagus++;
-            if (item.latestInspection?.condition === 'layak_pakai') layak++;
         });
-        return { bagus, layak };
+        return { bagus };
     }, [data]);
 
-    const goodPercent = totalAssets > 0 ? Math.round((latestStats.bagus + latestStats.layak) / totalAssets * 100) : 0;
+    const goodPercent = totalAssets > 0 ? Math.round(latestStats.bagus / totalAssets * 100) : 0;
 
     const downloadExcel = () => {
         const toastId = toast.loading('Menyiapkan file Excel...');
@@ -82,9 +74,7 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
             const rows = trendData.map(d => ({
                 Tanggal: d.fullDate,
                 Bagus: d.Bagus,
-                'Layak Pakai': d['Layak Pakai'],
                 'Tidak Bagus': d['Tidak Bagus'],
-                'Perlu Atensi': d['Perlu Atensi']
             }));
             
             const ws = XLSX.utils.json_to_sheet(rows);
@@ -193,9 +183,7 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
 
                 const condition = item.latestInspection?.condition || 'belum_update';
                 const conditionLabel = condition === 'bagus' ? 'Bagus' : 
-                                     condition === 'layak_pakai' ? 'Layak Pakai' :
-                                     condition === 'tidak_bagus' ? 'Tidak Bagus' :
-                                     condition === 'perlu_atensi' ? 'Perlu Atensi' : 'Belum Update';
+                                     condition === 'tidak_bagus' ? 'Tidak Bagus' : 'Belum Update';
 
                 pdf.text(`${index + 1}`, 18, y);
                 pdf.text(item.name || '-', 30, y);
@@ -300,23 +288,6 @@ export function InspectionSummaryChart({ data, historyData, dateRange, className
                                 stroke={COLORS.bagus} 
                                 strokeWidth={3} 
                                 dot={{ stroke: COLORS.bagus, strokeWidth: 2, r: 3, fill: 'white' }} 
-                                activeDot={{ r: 5 }} 
-                            />
-                            <Line 
-                                type="monotone" 
-                                dataKey="Layak Pakai" 
-                                stroke={COLORS.layak_pakai} 
-                                strokeWidth={3} 
-                                dot={{ stroke: COLORS.layak_pakai, strokeWidth: 2, r: 3, fill: 'white' }} 
-                                activeDot={{ r: 5 }} 
-                            />
-                            <Line 
-                                type="monotone" 
-                                dataKey="Perlu Atensi" 
-                                stroke={COLORS.perlu_atensi} 
-                                strokeWidth={2} 
-                                strokeDasharray="5 5"
-                                dot={{ stroke: COLORS.perlu_atensi, strokeWidth: 2, r: 3, fill: 'white' }} 
                                 activeDot={{ r: 5 }} 
                             />
                             <Line 

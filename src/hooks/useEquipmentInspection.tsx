@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 
-export type InspectionCondition = 'bagus' | 'tidak_bagus' | 'layak_pakai' | 'perlu_atensi';
+export type InspectionCondition = 'bagus' | 'tidak_bagus';
 
 export interface EquipmentInspection {
     id: string;
@@ -38,26 +38,12 @@ export const getConditionInfo = (condition: InspectionCondition) => {
                 bgColor: 'bg-green-100',
                 borderColor: 'border-green-500',
             };
-        case 'layak_pakai':
-            return {
-                label: 'Layak Pakai',
-                color: 'text-blue-600',
-                bgColor: 'bg-blue-100',
-                borderColor: 'border-blue-500',
-            };
         case 'tidak_bagus':
             return {
                 label: 'Tidak Bagus',
                 color: 'text-red-600',
                 bgColor: 'bg-red-100',
                 borderColor: 'border-red-500',
-            };
-        case 'perlu_atensi':
-            return {
-                label: 'Perlu Atensi',
-                color: 'text-orange-600',
-                bgColor: 'bg-orange-100',
-                borderColor: 'border-orange-500',
             };
         default:
             return {

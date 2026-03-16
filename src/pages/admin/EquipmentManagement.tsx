@@ -472,9 +472,7 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                                         <Pie
                                             data={[
                                                 { name: 'Bagus', value: logs.filter(l => l.condition === 'bagus').length, color: '#10b981' },
-                                                { name: 'Layak Pakai', value: logs.filter(l => l.condition === 'layak_pakai').length, color: '#3b82f6' },
                                                 { name: 'Tidak Bagus', value: logs.filter(l => l.condition === 'tidak_bagus').length, color: '#ef4444' },
-                                                { name: 'Perlu Atensi', value: logs.filter(l => l.condition === 'perlu_atensi').length, color: '#f97316' },
                                             ].filter(d => d.value > 0)}
                                             cx="50%"
                                             cy="50%"
@@ -485,9 +483,7 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                                         >
                                             {logs && [
                                                 { name: 'Bagus', color: '#10b981' },
-                                                { name: 'Layak Pakai', color: '#3b82f6' },
                                                 { name: 'Tidak Bagus', color: '#ef4444' },
-                                                { name: 'Perlu Atensi', color: '#f97316' },
                                             ].map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
@@ -504,9 +500,7 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                                 <div className="flex flex-wrap gap-3 mt-2">
                                     {[
                                         { label: 'Bagus', color: 'bg-[#10b981]', count: logs.filter(l => l.condition === 'bagus').length },
-                                        { label: 'Layak Pakai', color: 'bg-[#3b82f6]', count: logs.filter(l => l.condition === 'layak_pakai').length },
                                         { label: 'Tidak Bagus', color: 'bg-[#ef4444]', count: logs.filter(l => l.condition === 'tidak_bagus').length },
-                                        { label: 'Perlu Atensi', color: 'bg-[#f97316]', count: logs.filter(l => l.condition === 'perlu_atensi').length },
                                     ].filter(s => s.count > 0).map(s => (
                                         <div key={s.label} className="flex items-center gap-1.5">
                                             <div className={cn("w-2 h-2 rounded-full", s.color)} />
@@ -557,9 +551,7 @@ function EquipmentInspectionLogsDialog({ equipment, open, onOpenChange }: { equi
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="bagus">Bagus</SelectItem>
-                                                                <SelectItem value="layak_pakai">Layak Pakai</SelectItem>
                                                                 <SelectItem value="tidak_bagus">Tidak Bagus</SelectItem>
-                                                                <SelectItem value="perlu_atensi">Perlu Atensi</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     ) : (

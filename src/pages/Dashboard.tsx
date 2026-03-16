@@ -453,15 +453,13 @@ const Dashboard = () => {
                                           date: format(new Date(log.inspected_at), 'dd/MM', { locale: idLocale }),
                                           fullDate: format(new Date(log.inspected_at), 'dd MMM yyyy, HH:mm', { locale: idLocale }),
                                           condition: log.condition,
-                                          score: log.condition === 'bagus' ? 3 : 
-                                                 log.condition === 'layak_pakai' ? 2 : 
-                                                 log.condition === 'perlu_atensi' ? 1 : 0
+                                          score: log.condition === 'bagus' ? 1 : 0
                                         }))}
                                         margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                                       >
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
                                         <XAxis dataKey="date" tick={{fontSize: 9}} tickLine={false} axisLine={false} />
-                                        <YAxis domain={[0, 3]} ticks={[0, 1, 2, 3]} hide />
+                                        <YAxis domain={[0, 1]} ticks={[0, 1]} hide />
                                         <RechartsTooltip 
                                           content={({ active, payload }) => {
                                             if (active && payload && payload.length) {
