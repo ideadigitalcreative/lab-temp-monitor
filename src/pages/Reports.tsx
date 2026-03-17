@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function Reports() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -104,8 +104,8 @@ export default function Reports() {
 
             const isGlobal = !specificAssetId;
             const fetchRooms = isGlobal ? includeRooms : assetType === 'room';
-            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment' && assetSubTab === 'equip');
-            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment' && assetSubTab === 'insp');
+            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment');
+            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment');
 
             const fromStr = startOfDay(dateRange.from).toISOString();
             const toStr = endOfDay(dateRange.to).toISOString();
@@ -418,9 +418,6 @@ export default function Reports() {
 
             const equipLogsByAsset = new Map<string, any[]>();
             equipLogsData.forEach(log => {
-                // Only include if equipment is still set to 'temperature' type
-                if (log.equipment?.type !== 'temperature') return;
-                
                 const assetId = log.equipment_id || 'unknown';
                 if (!equipLogsByAsset.has(assetId)) equipLogsByAsset.set(assetId, []);
                 equipLogsByAsset.get(assetId)!.push(log);
@@ -428,9 +425,6 @@ export default function Reports() {
 
             const inspectionsByAsset = new Map<string, any[]>();
             inspectionsData.forEach(log => {
-                // Only include if equipment is still set to 'inspection' type
-                if (log.equipment?.type !== 'inspection') return;
-
                 const assetId = log.equipment_id || 'unknown';
                 if (!inspectionsByAsset.has(assetId)) inspectionsByAsset.set(assetId, []);
                 inspectionsByAsset.get(assetId)!.push(log);
@@ -440,11 +434,11 @@ export default function Reports() {
             console.log('--- DUPLICATE CHECK START ---');
             console.log('EQUIP TEMP LOGS GROUPING:');
             equipLogsByAsset.forEach((logs, id) => {
-                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | Count: ${logs.length}`);
+                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | TypeInDB: ${logs[0]?.equipment?.type} | Count: ${logs.length}`);
             });
             console.log('EQUIP INSPECTION GROUPING:');
             inspectionsByAsset.forEach((logs, id) => {
-                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | Count: ${logs.length}`);
+                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | TypeInDB: ${logs[0]?.equipment?.type} | Count: ${logs.length}`);
             });
             console.log('--- DUPLICATE CHECK END ---');
 
@@ -861,9 +855,12 @@ export default function Reports() {
             {/* Preview Dialog */}
             <Dialog open={!!previewAsset} onOpenChange={(open) => !open && setPreviewAsset(null)}>
                 <DialogContent className="max-w-4xl">
-                    <DialogHeader>
-                        <DialogTitle>Preview Data: {previewAsset?.name}</DialogTitle>
-                    </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>Preview Data: {previewAsset?.name}</DialogTitle>
+                    <DialogDescription>
+                        Grafik riwayat data untuk aset ini pada periode yang dipilih.
+                    </DialogDescription>
+                </DialogHeader>
                     <div className="h-[400px] w-full mt-4">
                         {isPreviewLoading ? (
                             <div className="h-full w-full flex items-center justify-center">
