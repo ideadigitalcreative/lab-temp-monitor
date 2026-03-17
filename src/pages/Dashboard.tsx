@@ -219,7 +219,7 @@ const Dashboard = () => {
               />
             </div>
 
-            <Tabs defaultValue="rooms" className="w-full space-y-6" onValueChange={(v) => {
+            <Tabs value={activeTab} className="w-full space-y-6" onValueChange={(v) => {
               setActiveTab(v as TabValue);
               setSelectedEquipment(null);
               setSelectedRoom(null);

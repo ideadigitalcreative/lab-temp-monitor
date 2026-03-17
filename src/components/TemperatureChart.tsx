@@ -230,6 +230,17 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
       pdf.setTextColor(33, 33, 33);
+      pdf.text('Paraf Verif :', 15, y);
+      
+      y += 2;
+      pdf.setDrawColor(33, 33, 33);
+      pdf.setLineWidth(0.4);
+      pdf.rect(15, y, 35, 15, 'S'); // Box for signature
+
+      y += 22; // Increased from 18 to 22 for better spacing
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setTextColor(33, 33, 33);
       pdf.text('Evaluasi :', 15, y);
 
       y += 5;
@@ -242,7 +253,7 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       pdf.setTextColor(100, 100, 100);
       pdf.text('(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)', 17, y + 4);
 
-      y += 35;
+      y += 32;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
       pdf.setTextColor(33, 33, 33);
@@ -259,26 +270,24 @@ export function TemperatureChart({ data, sourceData, title = 'Grafik Suhu' }: Te
       y += 5;
       pdf.text('- Pemeriksaan AKU (Angka Kuman Udara) hanya di lakukan pada Ruang Pengujian', 15, y);
 
-      y += 15;
+      y += 8; // Adjusted from 12 to 8 for better balance
       pdf.setFont('helvetica', 'italic');
-      pdf.setFontSize(9);
+      pdf.setFontSize(8); 
 
+      // Row 1
       pdf.text('Edisi', 15, y);
-      pdf.text(': IV', 45, y);
+      pdf.text(': IV', 40, y);
+      pdf.text('Tanggal Berlaku', 70, y);
+      pdf.text(`: ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, 100, y);
       pdf.text('Nomor Dokumen:', pageWidth - 15, y, { align: 'right' });
 
-      y += 5;
+      y += 4;
+      // Row 2
       pdf.text('Revisi', 15, y);
-      pdf.text(': 0', 45, y);
+      pdf.text(': 0', 40, y);
+      pdf.text('Halaman', 70, y);
+      pdf.text(`: ${totalPages}/${totalPages}`, 100, y);
       pdf.text('F/BLKM-MKS/6.3/01/00/01', pageWidth - 15, y, { align: 'right' });
-
-      y += 5;
-      pdf.text('Tanggal Berlaku', 15, y);
-      pdf.text(`: ${format(new Date(), 'dd MMMM yyyy', { locale: id })}`, 45, y);
-
-      y += 5;
-      pdf.text('Halaman', 15, y);
-      pdf.text(`: ${totalPages}/${totalPages}`, 45, y);
 
       pdf.save(`Laporan_Grafik_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
       toast.dismiss(toastId);

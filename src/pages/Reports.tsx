@@ -30,6 +30,7 @@ export default function Reports() {
     const [includeInspections, setIncludeInspections] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [activeTab, setActiveTab] = useState('full');
+    const [assetSubTab, setAssetSubTab] = useState('equip');
     const isMobile = useIsMobile();
     
     // Preview state
@@ -329,22 +330,7 @@ export default function Reports() {
 
             const addFooter = (sheet: ExcelJS.Worksheet, startRow: number, tableWidth: number, hideNotes: boolean = false) => {
                 let row = startRow + 1;
-                sheet.getCell(row, 1).value = 'Evaluasi :';
-                sheet.getCell(row, 1).font = { bold: true };
-
-                sheet.mergeCells(row + 1, 1, row + 4, tableWidth);
-                sheet.getCell(row + 1, 1).border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
-                sheet.getCell(row + 1, 1).alignment = { vertical: 'top', horizontal: 'left', indent: 1 };
-                sheet.getCell(row + 1, 1).value = '(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)';
-                sheet.getCell(row + 1, 1).font = { italic: true, size: 8, color: { argb: 'FF666666' } };
-
-                row += 6; // Gap after Evaluasi box
-                // Signature Section
+                // Signature Section (Moved above Evaluasi)
                 sheet.getCell(row, 1).value = 'Paraf Verif :';
                 sheet.getCell(row, 1).font = { bold: true };
                 
@@ -362,8 +348,24 @@ export default function Reports() {
                     }
                 }
                 
-                row += sigBoxHeight + 2;
+                row += sigBoxHeight + 3; // Increased gap to match PDF request
 
+                sheet.getCell(row, 1).value = 'Evaluasi :';
+                sheet.getCell(row, 1).font = { bold: true };
+
+                sheet.mergeCells(row + 1, 1, row + 4, tableWidth);
+                sheet.getCell(row + 1, 1).border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                sheet.getCell(row + 1, 1).alignment = { vertical: 'top', horizontal: 'left', indent: 1 };
+                sheet.getCell(row + 1, 1).value = '(Keterangan: Diisi oleh Penanggung Jawab Ruangan/Laboratorium)';
+                sheet.getCell(row + 1, 1).font = { italic: true, size: 8, color: { argb: 'FF666666' } };
+
+                row += 6; // Gap after Evaluasi box
+                
                 if (!hideNotes) {
                     sheet.getCell(row, 1).value = 'Catatan / Keterangan :';
                     sheet.getCell(row, 1).font = { bold: true };
@@ -744,7 +746,7 @@ export default function Reports() {
                             </div>
                         ) : (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <Tabs defaultValue="equip" className="w-full">
+                                <Tabs value={assetSubTab} onValueChange={setAssetSubTab} className="w-full">
                                     <TabsList className="w-full h-12 bg-secondary/30 mb-6 p-1 rounded-xl">
                                         <TabsTrigger value="equip" className="flex-1 gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
                                             <Thermometer className="w-4 h-4" />
