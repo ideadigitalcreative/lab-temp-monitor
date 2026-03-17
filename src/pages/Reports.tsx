@@ -430,6 +430,18 @@ export default function Reports() {
                 inspectionsByAsset.get(assetId)!.push(log);
             });
 
+            // DEBUG LOGS FOR DUPLATES
+            console.log('--- DUPLICATE CHECK START ---');
+            console.log('EQUIP TEMP LOGS GROUPING:');
+            equipLogsByAsset.forEach((logs, id) => {
+                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | Count: ${logs.length}`);
+            });
+            console.log('EQUIP INSPECTION GROUPING:');
+            inspectionsByAsset.forEach((logs, id) => {
+                console.log(`ID: ${id} | Name: ${logs[0]?.equipment?.name} | Count: ${logs.length}`);
+            });
+            console.log('--- DUPLICATE CHECK END ---');
+
             console.log('Export Debug:', {
                 roomLogsSize: roomLogsByAsset.size,
                 equipLogsSize: equipLogsByAsset.size,

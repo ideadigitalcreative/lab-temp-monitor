@@ -333,6 +333,14 @@ export function useDeleteEquipment() {
 
             if (logsError) throw logsError;
 
+            // Delete all related inspections too
+            const { error: inspError } = await (supabase as any)
+                .from('equipment_inspections')
+                .delete()
+                .eq('equipment_id', id);
+
+            if (inspError) throw inspError;
+
             // Then delete the equipment
             const { error, data } = await supabase
                 .from('equipment')
