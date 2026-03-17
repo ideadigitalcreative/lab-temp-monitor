@@ -224,7 +224,11 @@ export default function Reports() {
                 profiles?.forEach(p => userMap.set(p.id, p.full_name || p.email));
             }
 
-            const monthYear = format(dateRange.from, 'MMMM yyyy', { locale: id });
+            const isSameMonth = format(dateRange.from, 'MM yyyy') === format(dateRange.to, 'MM yyyy');
+            const monthYear = isSameMonth 
+                ? format(dateRange.from, 'MMMM yyyy', { locale: id })
+                : `${format(dateRange.from, 'dd/MM/yyyy')} - ${format(dateRange.to, 'dd/MM/yyyy')}`;
+            const periodLabel = isSameMonth ? 'Bulan' : 'Periode';
 
             const applySheetStyle = (sheet: ExcelJS.Worksheet, columns: Partial<ExcelJS.Column>[], title: string, infoRows: { label: string, value: string }[]) => {
                 sheet.columns = columns;
@@ -282,7 +286,7 @@ export default function Reports() {
                 }
 
                 sheet.mergeCells(6, midPoint + 1, 6, columns.length);
-                sheet.getCell(6, midPoint + 1).value = `Bulan : ${monthYear}`;
+                sheet.getCell(6, midPoint + 1).value = `${periodLabel} : ${monthYear}`;
                 sheet.getCell(6, midPoint + 1).font = { bold: true };
                 sheet.getCell(6, midPoint + 1).alignment = { horizontal: 'right' };
 
