@@ -104,8 +104,8 @@ export default function Reports() {
 
             const isGlobal = !specificAssetId;
             const fetchRooms = isGlobal ? includeRooms : assetType === 'room';
-            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment');
-            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment');
+            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment' && assetSubTab === 'equip');
+            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment' && assetSubTab === 'insp');
 
             const fromStr = startOfDay(dateRange.from).toISOString();
             const toStr = endOfDay(dateRange.to).toISOString();
@@ -142,7 +142,7 @@ export default function Reports() {
             if (fetchEquip) {
                 let query = supabase
                     .from('equipment_temperature_logs')
-                    .select('*, equipment!inner(id, name, location)')
+                    .select('*, equipment!inner(id, name, location, type)')
                     .gte('recorded_at', fromStr)
                     .lte('recorded_at', toStr)
                     .order('recorded_at', { ascending: false });
@@ -168,7 +168,7 @@ export default function Reports() {
             if (fetchInspections) {
                 let query = (supabase as any)
                     .from('equipment_inspections')
-                    .select('*, equipment!inner(id, name, location)')
+                    .select('*, equipment!inner(id, name, location, type)')
                     .gte('inspected_at', fromStr)
                     .lte('inspected_at', toStr)
                     .order('inspected_at', { ascending: false });
@@ -418,6 +418,9 @@ export default function Reports() {
 
             const equipLogsByAsset = new Map<string, any[]>();
             equipLogsData.forEach(log => {
+                // Only include if equipment is still set to 'temperature' type
+                if (log.equipment?.type !== 'temperature') return;
+                
                 const assetId = log.equipment_id || 'unknown';
                 if (!equipLogsByAsset.has(assetId)) equipLogsByAsset.set(assetId, []);
                 equipLogsByAsset.get(assetId)!.push(log);
@@ -425,6 +428,9 @@ export default function Reports() {
 
             const inspectionsByAsset = new Map<string, any[]>();
             inspectionsData.forEach(log => {
+                // Only include if equipment is still set to 'inspection' type
+                if (log.equipment?.type !== 'inspection') return;
+
                 const assetId = log.equipment_id || 'unknown';
                 if (!inspectionsByAsset.has(assetId)) inspectionsByAsset.set(assetId, []);
                 inspectionsByAsset.get(assetId)!.push(log);
