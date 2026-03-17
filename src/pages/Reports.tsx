@@ -102,18 +102,27 @@ export default function Reports() {
             let inspectionsData: any[] = [];
             const userIds = new Set<string>();
 
-            const isGlobal = !specificAssetId;
-            const fetchRooms = isGlobal ? includeRooms : assetType === 'room';
-            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment');
-            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment');
-
             const fromStr = startOfDay(dateRange.from).toISOString();
             const toStr = endOfDay(dateRange.to).toISOString();
+
+            // Fetch specific asset metadata first if it's a single export
+            let specificAssetType: string | null = null;
+            if (specificAssetId && assetType === 'equipment') {
+                const { data: assetObj } = await (supabase as any).from('equipment').select('type').eq('id', specificAssetId).single();
+                if (assetObj) specificAssetType = assetObj.type;
+            }
+
+            const isGlobal = !specificAssetId;
+            const fetchRooms = isGlobal ? includeRooms : assetType === 'room';
+            // Only fetch what matches the asset's real type if specific
+            const fetchEquip = isGlobal ? includeEquipment : (assetType === 'equipment' && (specificAssetType === 'temperature' || !specificAssetType));
+            const fetchInspections = isGlobal ? includeInspections : (assetType === 'equipment' && (specificAssetType === 'inspection' || !specificAssetType));
 
             console.log('--- Export Debug Info ---', {
                 isGlobal,
                 specificAssetId,
                 assetType,
+                realType: specificAssetType,
                 dateRange: { from: fromStr, to: toStr },
                 flags: { fetchRooms, fetchEquip, fetchInspections }
             });
@@ -418,6 +427,10 @@ export default function Reports() {
 
             const equipLogsByAsset = new Map<string, any[]>();
             equipLogsData.forEach(log => {
+                // IMPORTANT: Only include logs if the equipment is still set to 'temperature' type
+                // If the equipment has changed to 'inspection', hide old temp logs to avoid double tabs
+                if ((log.equipment as any)?.type === 'inspection') return;
+                
                 const assetId = log.equipment_id || 'unknown';
                 if (!equipLogsByAsset.has(assetId)) equipLogsByAsset.set(assetId, []);
                 equipLogsByAsset.get(assetId)!.push(log);
@@ -425,6 +438,10 @@ export default function Reports() {
 
             const inspectionsByAsset = new Map<string, any[]>();
             inspectionsData.forEach(log => {
+                // IMPORTANT: Only include inspections if the equipment is still set to 'inspection' type
+                // If the equipment has changed to 'temperature', hide old inspection records
+                if ((log.equipment as any)?.type === 'temperature') return;
+
                 const assetId = log.equipment_id || 'unknown';
                 if (!inspectionsByAsset.has(assetId)) inspectionsByAsset.set(assetId, []);
                 inspectionsByAsset.get(assetId)!.push(log);
