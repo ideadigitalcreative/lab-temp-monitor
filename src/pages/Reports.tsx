@@ -122,7 +122,7 @@ export default function Reports() {
             if (fetchRooms) {
                 let query = supabase
                     .from('temperature_logs')
-                    .select('*, rooms(id, name, location)')
+                    .select('*, rooms!inner(id, name, location)')
                     .gte('recorded_at', fromStr)
                     .lte('recorded_at', toStr)
                     .order('recorded_at', { ascending: false });
@@ -142,7 +142,7 @@ export default function Reports() {
             if (fetchEquip) {
                 let query = supabase
                     .from('equipment_temperature_logs')
-                    .select('*, equipment(id, name, location)')
+                    .select('*, equipment!inner(id, name, location)')
                     .gte('recorded_at', fromStr)
                     .lte('recorded_at', toStr)
                     .order('recorded_at', { ascending: false });
@@ -168,7 +168,7 @@ export default function Reports() {
             if (fetchInspections) {
                 let query = (supabase as any)
                     .from('equipment_inspections')
-                    .select('*, equipment(id, name, location)')
+                    .select('*, equipment!inner(id, name, location)')
                     .gte('inspected_at', fromStr)
                     .lte('inspected_at', toStr)
                     .order('inspected_at', { ascending: false });
