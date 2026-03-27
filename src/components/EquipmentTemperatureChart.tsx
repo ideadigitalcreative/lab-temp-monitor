@@ -52,21 +52,45 @@ export function EquipmentTemperatureChart({
   const chartRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
+  const isSingleLogMode = useMemo(() => {
+    if (!data.length) return false;
+    const nameLower = (title || data[0].roomName || '').toLowerCase();
+    
+    // Group 1: Explicit patterns provided by the user
+    const singleLogKeywords = [
+      'freezer', 
+      'lemari ice', 
+      'lemari es gea showcase', 
+      'waterbath'
+    ];
+    
+    if (singleLogKeywords.some(kw => nameLower.includes(kw))) return true;
+
+    // Group 2: Data-driven heuristic (if we only ever see 1 slot used across all days)
+    const uniqueSlots = new Set();
+    data.forEach(log => {
+      const slot = getTimeSlot(log.recordedAt);
+      if (slot) uniqueSlots.add(slot);
+    });
+    
+    return uniqueSlots.size <= 1;
+  }, [data, title]);
+
   const chartData = useMemo(() => {
     if (!data.length) return [];
 
-    const byDate = new Map<string, { pagi: number[]; siang: number[]; sore: number[] }>();
+    const byDate = new Map<string, { pagi: number[]; siang: number[]; sore: number[]; all: number[] }>();
 
     for (const log of data) {
-      const slot = getTimeSlot(log.recordedAt);
-      if (slot === null) continue;
-
       const dayKey = format(startOfDay(log.recordedAt), 'yyyy-MM-dd');
       if (!byDate.has(dayKey)) {
-        byDate.set(dayKey, { pagi: [], siang: [], sore: [] });
+        byDate.set(dayKey, { pagi: [], siang: [], sore: [], all: [] });
       }
       const row = byDate.get(dayKey)!;
-      row[slot].push(log.temperature);
+      row.all.push(log.temperature);
+      
+      const slot = getTimeSlot(log.recordedAt);
+      if (slot) row[slot].push(log.temperature);
     }
 
     const round2 = (v: number | undefined) =>
@@ -83,12 +107,13 @@ export function EquipmentTemperatureChart({
           date: format(d, 'dd/MM', { locale: id }),
           dateLabel: format(d, 'd MMM', { locale: id }),
           fullDate: format(d, 'dd MMM yyyy', { locale: id }),
-          suhuPagi: round2(avg(temps.pagi)),
-          suhuSiang: round2(avg(temps.siang)),
-          suhuSore: round2(avg(temps.sore)),
+          suhuPagi: isSingleLogMode ? undefined : round2(avg(temps.pagi)),
+          suhuSiang: isSingleLogMode ? undefined : round2(avg(temps.siang)),
+          suhuSore: isSingleLogMode ? undefined : round2(avg(temps.sore)),
+          suhuHarian: isSingleLogMode ? round2(avg(temps.all)) : undefined,
         };
       });
-  }, [data]);
+  }, [data, isSingleLogMode]);
 
   const downloadExcel = () => {
     const logsToExport = sourceData ?? data;
@@ -180,7 +205,8 @@ export function EquipmentTemperatureChart({
 
       pdf.setFontSize(16);
       pdf.setTextColor(33, 33, 33);
-      pdf.text('Laporan Grafik Suhu Alat (Pagi / Siang / Sore)', pageWidth / 2, 38, {
+      const titleType = isSingleLogMode ? 'Harian' : 'Pagi / Siang / Sore';
+      pdf.text(`Laporan Grafik Suhu Alat (${titleType})`, pageWidth / 2, 38, {
         align: 'center',
       });
       pdf.setFontSize(10);
@@ -331,32 +357,44 @@ export function EquipmentTemperatureChart({
           </p>
           <p className="text-sm text-muted-foreground mb-2">{row.fullDate}</p>
           <div className="space-y-1 pt-2 border-t border-border/50">
-            {row.suhuPagi != null && (
+            {isSingleLogMode ? (
               <p className="text-sm flex items-center justify-between gap-4">
                 <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-pagi))]" />
-                  <span className="text-muted-foreground">Suhu Pagi:</span>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#f97415' }} />
+                  <span className="text-muted-foreground">Suhu:</span>
                 </span>
-                <span className="font-mono font-bold">{row.suhuPagi}°C</span>
+                <span className="font-mono font-bold" style={{ color: '#f97415' }}>{row.suhuHarian}°C</span>
               </p>
-            )}
-            {row.suhuSiang != null && (
-              <p className="text-sm flex items-center justify-between gap-4">
-                <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-siang))]" />
-                  <span className="text-muted-foreground">Suhu Siang:</span>
-                </span>
-                <span className="font-mono font-bold">{row.suhuSiang}°C</span>
-              </p>
-            )}
-            {row.suhuSore != null && (
-              <p className="text-sm flex items-center justify-between gap-4">
-                <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-sore))]" />
-                  <span className="text-muted-foreground">Suhu Sore:</span>
-                </span>
-                <span className="font-mono font-bold">{row.suhuSore}°C</span>
-              </p>
+            ) : (
+              <>
+                {row.suhuPagi != null && (
+                  <p className="text-sm flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-pagi))]" />
+                      <span className="text-muted-foreground">Suhu Pagi:</span>
+                    </span>
+                    <span className="font-mono font-bold">{row.suhuPagi}°C</span>
+                  </p>
+                )}
+                {row.suhuSiang != null && (
+                  <p className="text-sm flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-siang))]" />
+                      <span className="text-muted-foreground">Suhu Siang:</span>
+                    </span>
+                    <span className="font-mono font-bold">{row.suhuSiang}°C</span>
+                  </p>
+                )}
+                {row.suhuSore != null && (
+                  <p className="text-sm flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-sore))]" />
+                      <span className="text-muted-foreground">Suhu Sore:</span>
+                    </span>
+                    <span className="font-mono font-bold">{row.suhuSore}°C</span>
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -458,37 +496,51 @@ export function EquipmentTemperatureChart({
               wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }}
               formatter={(value) => (
                 <span className="text-muted-foreground ml-1">
-                  {value === 'suhuPagi' ? 'Suhu Pagi' : value === 'suhuSiang' ? 'Suhu Siang' : 'Suhu Sore'}
+                  {isSingleLogMode ? 'Suhu Alat' : (value === 'suhuPagi' ? 'Suhu Pagi' : value === 'suhuSiang' ? 'Suhu Siang' : 'Suhu Sore')}
                 </span>
               )}
             />
-            <Line
-              {...lineProps}
-              dataKey="suhuPagi"
-              name="suhuPagi"
-              stroke="hsl(var(--chart-pagi))"
-              dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-pagi))' }}
-              activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-pagi))' }}
-              connectNulls
-            />
-            <Line
-              {...lineProps}
-              dataKey="suhuSiang"
-              name="suhuSiang"
-              stroke="hsl(var(--chart-siang))"
-              dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-siang))' }}
-              activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-siang))' }}
-              connectNulls
-            />
-            <Line
-              {...lineProps}
-              dataKey="suhuSore"
-              name="suhuSore"
-              stroke="hsl(var(--chart-sore))"
-              dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-sore))' }}
-              activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-sore))' }}
-              connectNulls
-            />
+            {isSingleLogMode ? (
+              <Line
+                {...lineProps}
+                dataKey="suhuHarian"
+                name="Suhu Alat"
+                stroke="#f97415"
+                dot={{ ...lineProps.dot, stroke: '#f97415' }}
+                activeDot={{ ...lineProps.activeDot, fill: '#f97415' }}
+                connectNulls
+              />
+            ) : (
+              <>
+                <Line
+                  {...lineProps}
+                  dataKey="suhuPagi"
+                  name="suhuPagi"
+                  stroke="hsl(var(--chart-pagi))"
+                  dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-pagi))' }}
+                  activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-pagi))' }}
+                  connectNulls
+                />
+                <Line
+                  {...lineProps}
+                  dataKey="suhuSiang"
+                  name="suhuSiang"
+                  stroke="hsl(var(--chart-siang))"
+                  dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-siang))' }}
+                  activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-siang))' }}
+                  connectNulls
+                />
+                <Line
+                  {...lineProps}
+                  dataKey="suhuSore"
+                  name="suhuSore"
+                  stroke="hsl(var(--chart-sore))"
+                  dot={{ ...lineProps.dot, stroke: 'hsl(var(--chart-sore))' }}
+                  activeDot={{ ...lineProps.activeDot, fill: 'hsl(var(--chart-sore))' }}
+                  connectNulls
+                />
+              </>
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
