@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { RoomCard } from '@/components/RoomCard';
 import { EquipmentCard } from '@/components/EquipmentCard';
@@ -61,6 +61,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { subDays } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import html2canvas from 'html2canvas';
 
 type TabValue = 'rooms' | 'equipment_temp' | 'equipment_inspection';
 
@@ -72,6 +73,8 @@ const Dashboard = () => {
     from: subDays(new Date(), 7),
     to: new Date(),
   });
+
+  const equipChartRef = useRef<HTMLDivElement>(null);
 
   const { data: rooms, isLoading: roomsLoading } = useRooms();
   const { data: roomsWithReadings, isLoading: readingsLoading } = useRoomsWithLatestReadings();
@@ -173,6 +176,216 @@ const Dashboard = () => {
     }));
   }, [equipmentLogs]);
 
+  const handleDownloadPDF = async (equip: any) => {
+    if (!equip) return;
+    const toastId = toast.loading(`Menyiapkan laporan PDF untuk ${equip.name}...`);
+    
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Capture Chart if exists
+      let chartImgData = null;
+      if (equipChartRef.current) {
+        try {
+          // Temporarily ensure high quality capture
+          const canvas = await html2canvas(equipChartRef.current, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+          chartImgData = canvas.toDataURL('image/png');
+        } catch (chartError) {
+          console.error('Error capturing chart for PDF:', chartError);
+        }
+      }
+
+      // Add a clean header box
+      doc.setFillColor(249, 250, 251);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
+      // Load Logo
+      try {
+        const logoUrl = '/Logo-Labkesmas-Makassar-I.png';
+        const img = new Image();
+        img.src = logoUrl;
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          setTimeout(reject, 2000); // 2s timeout
+        });
+        doc.addImage(img, 'PNG', 10, 8, 45, 12);
+      } catch (e) {
+        console.error('Logo failed to load', e);
+      }
+      
+      // Header Text
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      doc.text('LABORATORIUM PENGUJI', pageWidth - 10, 12, { align: 'right' });
+      doc.setFontSize(9);
+      doc.text('LABORATORIUM KESEHATAN MASYARAKAT', pageWidth - 10, 17, { align: 'right' });
+      doc.setFontSize(10);
+      doc.text('MAKASSAR II', pageWidth - 10, 22, { align: 'right' });
+      
+      doc.setDrawColor(229, 231, 235);
+      doc.line(10, 30, pageWidth - 10, 30);
+      
+      // Title
+      doc.setFontSize(14);
+      doc.setTextColor(37, 99, 235);
+      doc.text('REKAMAN PEMELIHARAAN & PEMERIKSAAN ALAT', pageWidth / 2, 45, { align: 'center' });
+      
+      // Asset Details Card-like section
+      doc.setDrawColor(209, 213, 219);
+      doc.setFillColor(243, 244, 246);
+      doc.roundedRect(10, 52, pageWidth - 20, 22, 1, 1, 'FD');
+      
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Informasi Alat:', 15, 59);
+      doc.text('Periode Laporan:', pageWidth - 15, 59, { align: 'right' });
+      
+      doc.setFontSize(11);
+      doc.setTextColor(17, 24, 39);
+      doc.setFont('helvetica', 'bold');
+      doc.text(equip.name, 15, 66);
+      doc.text(equip.location || '-', 15, 71);
+      
+      const pText = dateRange?.from ? 
+        `${format(dateRange.from, 'dd MMM yyyy', { locale: idLocale })} - ${dateRange.to ? format(dateRange.to, 'dd MMM yyyy', { locale: idLocale }) : format(new Date(), 'dd MMM yyyy', { locale: idLocale })}` 
+        : format(new Date(), 'MMMM yyyy', { locale: idLocale });
+      doc.text(pText, pageWidth - 15, 66, { align: 'right' });
+      
+      let y = 80;
+
+      // Add Chart to PDF if captured
+      if (chartImgData) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128);
+        doc.text('TREN KELAYAKAN FISIK (GRAFIK):', 10, y);
+        y += 4;
+        
+        const chartWidth = pageWidth - 20;
+        const chartHeight = 45; // Fixed height for consistency
+        doc.addImage(chartImgData, 'PNG', 10, y, chartWidth, chartHeight);
+        y += chartHeight + 10;
+      }
+
+      // Table Header
+      doc.setFillColor(37, 99, 235);
+      doc.rect(10, y, pageWidth - 20, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text('Waktu Pemeriksaan', 15, y + 6.5);
+      doc.text('Kondisi', 65, y + 6.5);
+      doc.text('Catatan', 100, y + 6.5);
+      doc.text('Petugas', pageWidth - 15, y + 6.5, { align: 'right' });
+      
+      // Table Content
+      y += 10;
+      doc.setTextColor(31, 41, 55);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      
+      const inspections = singleEquipInspections || [];
+      if (inspections.length === 0) {
+        doc.text('Tidak ada data pemeriksaan untuk periode ini.', pageWidth / 2, y + 15, { align: 'center' });
+        y += 20;
+      } else {
+        inspections.forEach((log, index) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 20;
+            // Draw mini header for new page
+            doc.setFillColor(37, 99, 235);
+            doc.rect(10, y, pageWidth - 20, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Waktu Pemeriksaan', 15, y + 6.5);
+            doc.text('Kondisi', 65, y + 6.5);
+            doc.text('Catatan', 100, y + 6.5);
+            doc.text('Petugas', pageWidth - 15, y + 6.5, { align: 'right' });
+            y += 10;
+            doc.setTextColor(31, 41, 55);
+            doc.setFont('helvetica', 'normal');
+          }
+          
+          // Zebra striping
+          if (index % 2 === 1) {
+            doc.setFillColor(249, 250, 251);
+            doc.rect(10, y, pageWidth - 20, 9, 'F');
+          }
+          
+          doc.setDrawColor(243, 244, 246);
+          doc.line(10, y + 9, pageWidth - 10, y + 9);
+          
+          doc.text(format(new Date(log.inspected_at), 'dd/MM/yyyy HH:mm'), 15, y + 6);
+          
+          const conditionText = log.condition === 'bagus' ? 'BAGUS' : 'TIDAK BAGUS';
+          if (conditionText === 'BAGUS') doc.setTextColor(22, 163, 74);
+          else doc.setTextColor(220, 38, 38);
+          doc.setFont('helvetica', 'bold');
+          doc.text(conditionText, 65, y + 6);
+          
+          doc.setTextColor(31, 41, 55);
+          doc.setFont('helvetica', 'normal');
+          
+          let notes = log.notes || '-';
+          if (notes.length > 50) notes = notes.substring(0, 47) + '...';
+          doc.text(notes, 100, y + 6);
+          
+          let inspector = log.profiles?.full_name || log.profiles?.email || '-';
+          if (inspector.length > 30) inspector = inspector.substring(0, 27) + '...';
+          doc.text(inspector, pageWidth - 15, y + 6, { align: 'right' });
+          
+          y += 9;
+        });
+      }
+      
+      // Signatures & Footer
+      y = Math.min(y + 15, 240);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(31, 41, 55);
+      doc.text('Paraf Verifikasi:', 15, y);
+      doc.setDrawColor(209, 213, 219);
+      doc.rect(15, y + 3, 45, 20);
+      
+      y += 35;
+      doc.setFont('helvetica', 'bold');
+      doc.text('EVALUASI :', 15, y);
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text('(Diisi oleh Penanggung Jawab Ruangan/Laboratorium)', 35, y);
+      
+      doc.setDrawColor(209, 213, 219);
+      doc.rect(15, y + 3, pageWidth - 30, 15);
+      
+      // Final metadata sticky to bottom
+      const footerY = 285;
+      doc.setDrawColor(107, 114, 128);
+      doc.setLineWidth(0.1);
+      doc.line(10, footerY - 5, pageWidth - 10, footerY - 5);
+      
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Edisi: IV | Revisi: 0 | Halaman: 1/1', 15, footerY);
+      doc.text(`Dokumen: F/BLKM-MKS/6.3/01/00/01 | Dicetak: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - 15, footerY, { align: 'right' });
+      
+      doc.save(`Laporan_Alat_${equip.name.replace(/\s+/g, '_')}.pdf`);
+      toast.success('Laporan PDF berhasil diunduh', { id: toastId });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Gagal mengunduh laporan PDF', { id: toastId });
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -259,17 +472,6 @@ const Dashboard = () => {
                   <h2 className="text-xl font-bold">Monitoring Ruangan</h2>
                 </div>
 
-                {/* Filters */}
-                <div className="glass-card rounded-xl p-4">
-                  <RoomFilter
-                    rooms={rooms || []}
-                    selectedRoom={selectedRoom}
-                    dateRange={dateRange}
-                    onRoomChange={setSelectedRoom}
-                    onDateRangeChange={setDateRange}
-                  />
-                </div>
-
                 {/* Chart Section */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Grafik Tren Ruangan</h3>
@@ -288,6 +490,17 @@ const Dashboard = () => {
                       <p>Belum ada data rekaman untuk periode ini</p>
                     </div>
                   )}
+                </div>
+
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={rooms || []}
+                    selectedRoom={selectedRoom}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedRoom}
+                    onDateRangeChange={setDateRange}
+                  />
                 </div>
 
                 {/* Room Cards Section */}
@@ -334,19 +547,6 @@ const Dashboard = () => {
                   <h2 className="text-xl font-bold">Monitoring Suhu Peralatan</h2>
                 </div>
 
-                {/* Filters */}
-                <div className="glass-card rounded-xl p-4">
-                  <RoomFilter
-                    rooms={equipment?.filter(e => e.type === 'temperature').map(e => ({ ...e, location: e.location })) || []}
-                    selectedRoom={selectedEquipment}
-                    dateRange={dateRange}
-                    onRoomChange={setSelectedEquipment}
-                    onDateRangeChange={setDateRange}
-                    searchPlaceholder="Cari alat..."
-                    selectPlaceholder="Pilih Alat"
-                  />
-                </div>
-
                 {/* Temperature Chart Section - 3 garis: Pagi, Siang, Sore */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider ml-1">Grafik Suhu Alat</h3>
@@ -365,6 +565,19 @@ const Dashboard = () => {
                       <p>Belum ada data suhu alat untuk periode ini</p>
                     </div>
                   )}
+                </div>
+
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={equipment?.filter(e => e.type === 'temperature').map(e => ({ ...e, location: e.location })) || []}
+                    selectedRoom={selectedEquipment}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedEquipment}
+                    onDateRangeChange={setDateRange}
+                    searchPlaceholder="Cari alat..."
+                    selectPlaceholder="Pilih Alat"
+                  />
                 </div>
 
                 {/* List Section */}
@@ -404,21 +617,7 @@ const Dashboard = () => {
                       <h2 className="text-xl font-bold">Pemeriksaan Kondisi Alat</h2>
                     </div>
                   </div>
-
-                {/* Filters */}
-                <div className="glass-card rounded-xl p-4">
-                  <RoomFilter
-                    rooms={equipment?.filter(e => e.type === 'inspection').map(e => ({ ...e, location: e.location })) || []}
-                    selectedRoom={selectedEquipment}
-                    dateRange={dateRange}
-                    onRoomChange={setSelectedEquipment}
-                    onDateRangeChange={setDateRange}
-                    searchPlaceholder="Cari alat..."
-                    selectPlaceholder="Pilih Alat"
-                  />
-                </div>
-
-                {/* Inspection Analysis Section */}
+                {/* Inspection Analysis Section */}
                 {equipmentInspection && equipmentInspection.length > 0 && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -428,14 +627,24 @@ const Dashboard = () => {
                           : "Analisis Kelayakan Aset"}
                       </h3>
                       {selectedEquipment && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setSelectedEquipment(null)}
-                          className="text-xs h-7 gap-1"
-                        >
-                          <X className="w-3 h-3" /> Kembali ke Semua
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDownloadPDF(selectedEquipInfo)}
+                            className="text-xs h-7 gap-1 bg-white hover:bg-red-50 text-red-600 border-red-200"
+                          >
+                            <FileText className="w-3 h-3" /> Download PDF
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setSelectedEquipment(null)}
+                            className="text-xs h-7 gap-1"
+                          >
+                            <X className="w-3 h-3" /> Kembali ke Semua
+                          </Button>
+                        </div>
                       )}
                     </div>
 
@@ -446,7 +655,7 @@ const Dashboard = () => {
                             <CardContent className="p-4 flex flex-col items-center justify-center h-full min-h-[220px]">
                               {singleEquipInspections && singleEquipInspections.length > 0 ? (
                                 <>
-                                  <div className="h-[180px] w-full mt-2">
+                                  <div ref={equipChartRef} className="h-[200px] w-full mt-2 bg-white rounded-lg p-2">
                                     <ResponsiveContainer width="100%" height="100%">
                                       <LineChart
                                         data={[...singleEquipInspections].reverse().map(log => ({
@@ -483,7 +692,7 @@ const Dashboard = () => {
                                           dataKey="score" 
                                           stroke="hsl(var(--primary))" 
                                           strokeWidth={2} 
-                                          dot={(props) => {
+                                          dot={(props: any) => {
                                             const { cx, cy, payload } = props;
                                             const info = getConditionInfo(payload.condition);
                                             const color = info.bgColor.replace('bg-', '').replace('-100', '-500');
@@ -577,6 +786,20 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Filters */}
+                <div className="glass-card rounded-xl p-4">
+                  <RoomFilter
+                    rooms={equipment?.filter(e => e.type === 'inspection').map(e => ({ ...e, location: e.location })) || []}
+                    selectedRoom={selectedEquipment}
+                    dateRange={dateRange}
+                    onRoomChange={setSelectedEquipment}
+                    onDateRangeChange={setDateRange}
+                    searchPlaceholder="Cari alat..."
+                    selectPlaceholder="Pilih Alat"
+                  />
+                </div>
+
 
                 {/* List Section */}
                 <div className="space-y-4">
