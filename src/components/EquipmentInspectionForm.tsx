@@ -207,7 +207,7 @@ export function EquipmentInspectionForm({
 
                 {/* Timestamp Selection */}
                 <div className="glass-card bg-secondary/10 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between hidden">
+                    <div className="flex items-center justify-between">
                         <Label htmlFor="inspection-manual-time-toggle" className="text-sm font-medium cursor-pointer">
                             Gunakan Waktu Manual
                         </Label>
