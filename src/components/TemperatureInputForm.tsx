@@ -164,7 +164,7 @@ export function TemperatureInputForm({
 
       {/* Timestamp Selection */}
       <div className="glass-card rounded-xl p-4 space-y-3 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between hidden">
           <Label htmlFor="manual-time-toggle" className="text-sm font-medium cursor-pointer">
             Gunakan Waktu Manual
           </Label>
